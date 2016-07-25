@@ -28,7 +28,7 @@ function setup() {
   amplitude.smooth(0.9);
 
   sizeSlider = createSlider(30,300,300,0.1);
-  sizeSlider.position(300,windowHeight+10);
+  sizeSlider.position(300,windowHeight-30);
   
   
   
@@ -81,6 +81,10 @@ function draw() {
     cameraZ -= sizeSlider.value();
   }
 }
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  // background(0);
+}
 
 function musicOnOff() {
   if (musicPlaying == true) {
@@ -92,13 +96,15 @@ function musicOnOff() {
   }
 }
 
-function mousePressed(){
-  if(musicPlaying==true){
-    song.pause();
-    musicPlaying=false;
-  }
-  else{
-    song.play();
-    musicPlaying=true;
+function keyPressed(){
+  if (keyCode ==32){
+    if (musicPlaying){
+      song.pause();
+      musicPlaying=false;
+    }
+    else{
+      song.play();
+      musicPlaying=true;
+    }
   }
 }
