@@ -2,7 +2,7 @@ var song, amplitude;
 var musicPlaying = true;
 
 var circles=[];
-var numOfCircles=800;
+var numOfCircles=500;
 var gravity;
 var angle=0;
 
@@ -17,6 +17,8 @@ var beatCutOff=0;
 var beatDecayRate=0.98;
 var countFramesSinceLastBeat=0;
 
+var onBeat =false;
+
 var circleSizeSlider;
 var backgroundColor;
 
@@ -27,7 +29,7 @@ function preload(){
 
 function setup() {
   createCanvas(windowWidth,windowHeight);
-  backgroundColor=40;
+  backgroundColor=10;
   song.play();
   
   amplitude = new p5.Amplitude();
@@ -41,18 +43,19 @@ function setup() {
   
   circleSizeSlider = createSlider(2,200,0.1);
   circleSizeSlider.position(100,windowHeight-50);
+  
 }
 
 function draw() {
-  background(40);
+  background(10);
   
   var mult_cPos = map(amplitude.getLevel(),0,1,1,25);
-  var mult_maxspeed = map(amplitude.getLevel(),0,1,1,120);
+  var mult_maxspeed = map(amplitude.getLevel(),0,1,1,115);
   detectBeat(amplitude.getLevel());
   translate(windowWidth/2,windowHeight/2);
   rotate(angle);
   push();
-  // beginShape();
+
   for(var i=0;i<circles.length;i++){
     var c = createVector(circlePos*cos(TWO_PI/circles.length*i),circlePos*sin(TWO_PI/circles.length*i));
     c.mult(mult_cPos);
@@ -60,7 +63,7 @@ function draw() {
     circles[i].update(mult_maxspeed);
     circles[i].display();
   }
-  // endShape();
+
   pop();
   
   stroke(255);
@@ -73,14 +76,17 @@ function detectBeat(level){
     backgroundColor = color(random(255),random(255),random(255));
     beatCutOff = level*1.2;
     countFramesSinceLastBeat=0;
+    onBeat = true;
   }
   else{
+    
     if(countFramesSinceLastBeat <= beatHoldFrames){
       countFramesSinceLastBeat++;
     }
     else{
       beatCutOff *= beatDecayRate;
       beatCutOff = Math.max(beatCutOff,beatThreshold);
+      onBeat =false;
     }
   }
 }
