@@ -7,7 +7,7 @@ function Circle(x,y){
   this.maxspeed=0.3;
   this.ampspeed=random(0.08,this.maxspeed);
   this.maxforce =0.1;
-  var circleColor = color(178,20,110);
+  var circleColor = color(255,200);
   
   // this.history =[];
   
@@ -41,12 +41,12 @@ function Circle(x,y){
     // }
   }
   this.display = function(){
-    if(onBeat == true){
-      circleColor =color(255,127,80);
-    }
-    else{
-      circleColor = color(178,20,110);
-    }
+    // if(onBeat == true){
+    //   circleColor =color(255,127,80);
+    // }
+    // else{
+    //   circleColor = color(178,20,110);
+    // }
     fill(circleColor);
     noStroke();
     ellipse(this.pos.x,this.pos.y,circleSizeSlider.value(),circleSizeSlider.value());
