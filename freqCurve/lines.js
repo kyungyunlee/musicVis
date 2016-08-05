@@ -38,7 +38,7 @@ function Lines(r,g,b){
 // }
     var col= color(this.r,this.g,this.b,op);
     stroke(col);
-    strokeWeight(2);
+    strokeWeight(strokeSlider.value());
     noFill();
     // fill(255,1);
     ellipse(50,windowHeight/2,3,3);
@@ -48,7 +48,7 @@ function Lines(r,g,b){
     vertex(50,windowHeight/2);
     curveVertex(50,windowHeight/2);
     for(var i=0; i<numOfPoints;i++){
-      heightOfPoints[i] = map(fft.getEnergy(range*i+1, range*i+range),0,255,0,windowHeight*0.8);
+      heightOfPoints[i] = map(fft.getEnergy(range*i+1, range*i+range),0,255,50,windowHeight*0.8);
       curveVertex(i*lengthBetweenPoints+50, heightOfPoints[i]);
       this.history[i].push(heightOfPoints[i]);
     }

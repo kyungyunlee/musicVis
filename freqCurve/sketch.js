@@ -15,6 +15,8 @@ var numOfPoints=30;
 var r,g,b;
 var lines=[];
 
+var strokeSlider;
+
 function preload() {
   song = loadSound('assets/lifeincolor.mp3');
 }
@@ -33,6 +35,9 @@ function setup() {
   g=255;
   b=255;
   lines.push(new Lines(r,g,b));
+  
+  strokeSlider= createSlider(2,30,30,1);
+  strokeSlider.position(windowWidth/2-10,windowHeight-30);
 }
 
 function draw() {
@@ -78,7 +83,6 @@ function detectBeat(level){
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
-  background(0);
 }
 
 function keyPressed(){

@@ -50,8 +50,10 @@ function Circle(x,y){
     fill(circleColor);
     noStroke();
     ellipse(this.pos.x,this.pos.y,circleSizeSlider.value(),circleSizeSlider.value());
-    
-    // beginShape();
+    // stroke(255);
+    // // vertex(this.pos.x,this.pos.y);
+    // curveVertex(this.pos.x,this.pos.y);
+    // // beginShape();
     // for (var i=0; i<this.history.length;i++){
     //   noFill();
     //   stroke(255);

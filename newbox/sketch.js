@@ -37,7 +37,7 @@ function setup() {
   amplitude.smooth(0.9);
 
   sizeSlider = createSlider(50,300,300,0.1);
-  sizeSlider.position(300,windowHeight-30);
+  sizeSlider.position(windowWidth/2-10,windowHeight-30)
   
   boxColor = color(random(20,40), random(100,120), random(140,180));
   angle=0;
@@ -94,6 +94,7 @@ function draw() {
 }
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
+  sizeSlider.position(windowWidth/2-10,windowHeight-30);
 }
 
 function musicOnOff() {

@@ -2,7 +2,7 @@ var song, amplitude;
 var musicPlaying = true;
 
 var circles=[];
-var numOfCircles=500;
+var numOfCircles=200;
 var gravity;
 var angle=0;
 
@@ -42,20 +42,22 @@ function setup() {
   }
   
   circleSizeSlider = createSlider(2,200,0.1);
-  circleSizeSlider.position(100,windowHeight-50);
+  circleSizeSlider.position(windowWidth/2-10,windowHeight-30);
   
 }
 
 function draw() {
   background(10);
   
-  var mult_cPos = map(amplitude.getLevel(),0,1,1,25);
-  var mult_maxspeed = map(amplitude.getLevel(),0,1,1,115);
+  var mult_cPos = map(amplitude.getLevel(),0,1,0,20);
+  var mult_maxspeed = map(amplitude.getLevel(),0,1,1,110);
   detectBeat(amplitude.getLevel());
   translate(windowWidth/2,windowHeight/2);
   rotate(angle);
   push();
-
+  
+  beginShape();
+  // circles[0].display();
   for(var i=0;i<circles.length;i++){
     var c = createVector(circlePos*cos(TWO_PI/circles.length*i),circlePos*sin(TWO_PI/circles.length*i));
     c.mult(mult_cPos);
@@ -63,6 +65,8 @@ function draw() {
     circles[i].update(mult_maxspeed);
     circles[i].display();
   }
+  // circles[circles.length-1].display();
+  endShape();
 
   pop();
   
@@ -93,7 +97,7 @@ function detectBeat(level){
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
-  background(0);
+  circleSizeSlider.position(windowWidth/2-10,windowHeight-30);
 }
 
 function keyPressed(){
