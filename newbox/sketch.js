@@ -68,6 +68,9 @@ function draw() {
   
   rotateY(radians(angle));
   camera(moveCameraX, moveCameraY, cameraZ);
+  if (onBeat){
+    boxcolor=color(random(255),random(255),random(255));
+  }
   
   
   var boxheight = map(amplitude.getLevel(), 0, 1, 30, 2000);

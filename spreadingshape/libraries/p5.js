@@ -1,4 +1,4 @@
-/*! p5.js v0.5.2 August 06, 2016 */
+/*! p5.js v0.5.2 June 17, 2016 */
 (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.p5 = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
 
 },{}],2:[function(_dereq_,module,exports){
@@ -287,24 +287,22 @@ function Font(options) {
     options = options || {};
 
     // OS X will complain if the names are empty, so we put a single space everywhere by default.
-    this.names = {
-        fontFamily: {en: options.familyName || ' '},
-        fontSubfamily: {en: options.styleName || ' '},
-        designer: {en: options.designer || ' '},
-        designerURL: {en: options.designerURL || ' '},
-        manufacturer: {en: options.manufacturer || ' '},
-        manufacturerURL: {en: options.manufacturerURL || ' '},
-        license: {en: options.license || ' '},
-        licenseURL: {en: options.licenseURL || ' '},
-        version: {en: options.version || 'Version 0.1'},
-        description: {en: options.description || ' '},
-        copyright: {en: options.copyright || ' '},
-        trademark: {en: options.trademark || ' '}
-    };
+    this.familyName = options.familyName || ' ';
+    this.styleName = options.styleName || ' ';
+    this.designer = options.designer || ' ';
+    this.designerURL = options.designerURL || ' ';
+    this.manufacturer = options.manufacturer || ' ';
+    this.manufacturerURL = options.manufacturerURL || ' ';
+    this.license = options.license || ' ';
+    this.licenseURL = options.licenseURL || ' ';
+    this.version = options.version || 'Version 0.1';
+    this.description = options.description || ' ';
+    this.copyright = options.copyright || ' ';
+    this.trademark = options.trademark || ' ';
     this.unitsPerEm = options.unitsPerEm || 1000;
     this.ascender = options.ascender;
     this.descender = options.descender;
-    this.supported = true; // Deprecated: parseBuffer will throw an error if font is not supported.
+    this.supported = true;
     this.glyphs = new glyphset.GlyphSet(this, options.glyphs || []);
     this.encoding = new encoding.DefaultEncoding(this);
     this.tables = {};
@@ -388,6 +386,10 @@ Font.prototype.getKerningValue = function(leftGlyph, rightGlyph) {
 // Helper function that invokes the given callback for each glyph in the given text.
 // The callback gets `(glyph, x, y, fontSize, options)`.
 Font.prototype.forEachGlyph = function(text, x, y, fontSize, options, callback) {
+    if (!this.supported) {
+        return;
+    }
+
     x = x !== undefined ? x : 0;
     y = y !== undefined ? y : 0;
     fontSize = fontSize !== undefined ? fontSize : 72;
@@ -476,13 +478,6 @@ Font.prototype.drawMetrics = function(ctx, text, x, y, fontSize, options) {
     });
 };
 
-Font.prototype.getEnglishName = function(name) {
-    var translations = this.names[name];
-    if (translations) {
-        return translations.en;
-    }
-};
-
 // Validate
 Font.prototype.validate = function() {
     var warnings = [];
@@ -494,18 +489,16 @@ Font.prototype.validate = function() {
         }
     }
 
-    function assertNamePresent(name) {
-        var englishName = _this.getEnglishName(name);
-        assert(englishName && englishName.trim().length > 0,
-               'No English ' + name + ' specified.');
+    function assertStringAttribute(attrName) {
+        assert(_this[attrName] && _this[attrName].trim().length > 0, 'No ' + attrName + ' specified.');
     }
 
     // Identification information
-    assertNamePresent('fontFamily');
-    assertNamePresent('weightName');
-    assertNamePresent('manufacturer');
-    assertNamePresent('copyright');
-    assertNamePresent('version');
+    assertStringAttribute('familyName');
+    assertStringAttribute('weightName');
+    assertStringAttribute('manufacturer');
+    assertStringAttribute('copyright');
+    assertStringAttribute('version');
 
     // Dimension information
     assert(this.unitsPerEm > 0, 'No unitsPerEm specified.');
@@ -531,9 +524,7 @@ Font.prototype.toBuffer = function() {
 
 // Initiate a download of the OpenType font.
 Font.prototype.download = function() {
-    var familyName = this.getEnglishName('fontFamily');
-    var styleName = this.getEnglishName('fontSubfamily');
-    var fileName = familyName.replace(/\s/g, '') + '-' + styleName + '.otf';
+    var fileName = this.familyName.replace(/\s/g, '') + '-' + this.styleName + '.otf';
     var buffer = this.toBuffer();
 
     window.requestFileSystem = window.requestFileSystem || window.webkitRequestFileSystem;
@@ -559,7 +550,7 @@ Font.prototype.download = function() {
 
 exports.Font = Font;
 
-},{"./encoding":4,"./glyphset":7,"./path":10,"./tables/sfnt":27}],6:[function(_dereq_,module,exports){
+},{"./encoding":4,"./glyphset":7,"./path":10,"./tables/sfnt":25}],6:[function(_dereq_,module,exports){
 // The Glyph object
 
 'use strict';
@@ -728,23 +719,6 @@ Glyph.prototype.getMetrics = function() {
         yMax: Math.max.apply(null, yCoords),
         leftSideBearing: 0
     };
-
-    if (!isFinite(metrics.xMin)) {
-        metrics.xMin = 0;
-    }
-
-    if (!isFinite(metrics.xMax)) {
-        metrics.xMax = this.advanceWidth;
-    }
-
-    if (!isFinite(metrics.yMin)) {
-        metrics.yMin = 0;
-    }
-
-    if (!isFinite(metrics.yMax)) {
-        metrics.yMax = 0;
-    }
-
     metrics.rightSideBearing = this.advanceWidth - metrics.leftSideBearing - (metrics.xMax - metrics.xMin);
     return metrics;
 };
@@ -950,14 +924,12 @@ var path = _dereq_('./path');
 
 var cmap = _dereq_('./tables/cmap');
 var cff = _dereq_('./tables/cff');
-var fvar = _dereq_('./tables/fvar');
 var glyf = _dereq_('./tables/glyf');
 var gpos = _dereq_('./tables/gpos');
 var head = _dereq_('./tables/head');
 var hhea = _dereq_('./tables/hhea');
 var hmtx = _dereq_('./tables/hmtx');
 var kern = _dereq_('./tables/kern');
-var ltag = _dereq_('./tables/ltag');
 var loca = _dereq_('./tables/loca');
 var maxp = _dereq_('./tables/maxp');
 var _name = _dereq_('./tables/name');
@@ -1006,19 +978,16 @@ function loadFromUrl(url, callback) {
 // Public API ///////////////////////////////////////////////////////////
 
 // Parse the OpenType file data (as an ArrayBuffer) and return a Font object.
-// Throws an error if the font could not be parsed.
+// If the file could not be parsed (most likely because it contains Postscript outlines)
+// we return an empty Font object with the `supported` flag set to `false`.
 function parseBuffer(buffer) {
     var indexToLocFormat;
-    var ltagTable;
-
-    var cffOffset;
-    var fvarOffset;
-    var glyfOffset;
-    var gposOffset;
     var hmtxOffset;
-    var kernOffset;
+    var glyfOffset;
     var locaOffset;
-    var nameOffset;
+    var cffOffset;
+    var kernOffset;
+    var gposOffset;
 
     // OpenType fonts use big endian byte ordering.
     // We can't rely on typed array view types, because they operate with the endianness of the host computer.
@@ -1050,9 +1019,10 @@ function parseBuffer(buffer) {
         case 'cmap':
             font.tables.cmap = cmap.parse(data, offset);
             font.encoding = new encoding.CmapEncoding(font.tables.cmap);
-            break;
-        case 'fvar':
-            fvarOffset = offset;
+            if (!font.encoding) {
+                font.supported = false;
+            }
+
             break;
         case 'head':
             font.tables.head = head.parse(data, offset);
@@ -1068,15 +1038,14 @@ function parseBuffer(buffer) {
         case 'hmtx':
             hmtxOffset = offset;
             break;
-        case 'ltag':
-            ltagTable = ltag.parse(data, offset);
-            break;
         case 'maxp':
             font.tables.maxp = maxp.parse(data, offset);
             font.numGlyphs = font.tables.maxp.numGlyphs;
             break;
         case 'name':
-            nameOffset = offset;
+            font.tables.name = _name.parse(data, offset);
+            font.familyName = font.tables.name.fontFamily;
+            font.styleName = font.tables.name.fontSubfamily;
             break;
         case 'OS/2':
             font.tables.os2 = os2.parse(data, offset);
@@ -1104,34 +1073,29 @@ function parseBuffer(buffer) {
         p += 16;
     }
 
-    font.tables.name = _name.parse(data, nameOffset, ltagTable);
-    font.names = font.tables.name;
-
     if (glyfOffset && locaOffset) {
         var shortVersion = indexToLocFormat === 0;
         var locaTable = loca.parse(data, locaOffset, font.numGlyphs, shortVersion);
         font.glyphs = glyf.parse(data, glyfOffset, locaTable, font);
+        hmtx.parse(data, hmtxOffset, font.numberOfHMetrics, font.numGlyphs, font.glyphs);
+        encoding.addGlyphNames(font);
     } else if (cffOffset) {
         cff.parse(data, cffOffset, font);
+        encoding.addGlyphNames(font);
     } else {
-        throw new Error('Font doesn\'t contain TrueType or CFF outlines.');
+        font.supported = false;
     }
 
-    hmtx.parse(data, hmtxOffset, font.numberOfHMetrics, font.numGlyphs, font.glyphs);
-    encoding.addGlyphNames(font);
+    if (font.supported) {
+        if (kernOffset) {
+            font.kerningPairs = kern.parse(data, kernOffset);
+        } else {
+            font.kerningPairs = {};
+        }
 
-    if (kernOffset) {
-        font.kerningPairs = kern.parse(data, kernOffset);
-    } else {
-        font.kerningPairs = {};
-    }
-
-    if (gposOffset) {
-        gpos.parse(data, gposOffset, font);
-    }
-
-    if (fvarOffset) {
-        font.tables.fvar = fvar.parse(data, fvarOffset, font.names);
+        if (gposOffset) {
+            gpos.parse(data, gposOffset, font);
+        }
     }
 
     return font;
@@ -1152,16 +1116,12 @@ function load(url, callback) {
         }
 
         var font = parseBuffer(arrayBuffer);
+        if (!font.supported) {
+            return callback('Font is not supported (is this a Postscript font?)');
+        }
+
         return callback(null, font);
     });
-}
-
-// Syncronously load the font from a URL or file.
-// When done, return the font object or throw an error.
-function loadSync(url) {
-    var fs = _dereq_('fs');
-    var buffer = fs.readFileSync(url);
-    return parseBuffer(toArrayBuffer(buffer));
 }
 
 exports._parse = parse;
@@ -1170,9 +1130,8 @@ exports.Glyph = glyph.Glyph;
 exports.Path = path.Path;
 exports.parse = parseBuffer;
 exports.load = load;
-exports.loadSync = loadSync;
 
-},{"./encoding":4,"./font":5,"./glyph":6,"./parse":9,"./path":10,"./tables/cff":12,"./tables/cmap":13,"./tables/fvar":14,"./tables/glyf":15,"./tables/gpos":16,"./tables/head":17,"./tables/hhea":18,"./tables/hmtx":19,"./tables/kern":20,"./tables/loca":21,"./tables/ltag":22,"./tables/maxp":23,"./tables/name":24,"./tables/os2":25,"./tables/post":26,"fs":1}],9:[function(_dereq_,module,exports){
+},{"./encoding":4,"./font":5,"./glyph":6,"./parse":9,"./path":10,"./tables/cff":12,"./tables/cmap":13,"./tables/glyf":14,"./tables/gpos":15,"./tables/head":16,"./tables/hhea":17,"./tables/hmtx":18,"./tables/kern":19,"./tables/loca":20,"./tables/maxp":21,"./tables/name":22,"./tables/os2":23,"./tables/post":24,"fs":1}],9:[function(_dereq_,module,exports){
 // Parsing utility functions
 
 'use strict';
@@ -1613,7 +1572,7 @@ Table.prototype.encode = function() {
 
 exports.Table = Table;
 
-},{"./check":2,"./types":28}],12:[function(_dereq_,module,exports){
+},{"./check":2,"./types":26}],12:[function(_dereq_,module,exports){
 // The `CFF` table contains the glyph outlines in PostScript format.
 // https://www.microsoft.com/typography/OTSPEC/cff.htm
 // http://download.microsoft.com/download/8/0/1/801a191c-029d-4af3-9642-555f6fe514ee/cff.pdf
@@ -2924,154 +2883,6 @@ exports.parse = parseCmapTable;
 exports.make = makeCmapTable;
 
 },{"../check":2,"../parse":9,"../table":11}],14:[function(_dereq_,module,exports){
-// The `fvar` table stores font variation axes and instances.
-// https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6fvar.html
-
-'use strict';
-
-var check = _dereq_('../check');
-var parse = _dereq_('../parse');
-var table = _dereq_('../table');
-
-function addName(name, names) {
-    var nameString = JSON.stringify(name);
-    var nameID = 256;
-    for (var nameKey in names) {
-        var n = parseInt(nameKey);
-        if (!n || n < 256) {
-            continue;
-        }
-
-        if (JSON.stringify(names[nameKey]) === nameString) {
-            return n;
-        }
-
-        if (nameID <= n) {
-            nameID = n + 1;
-        }
-    }
-
-    names[nameID] = name;
-    return nameID;
-}
-
-function makeFvarAxis(axis, names) {
-    var nameID = addName(axis.name, names);
-    return new table.Table('fvarAxis', [
-        {name: 'tag', type: 'TAG', value: axis.tag},
-        {name: 'minValue', type: 'FIXED', value: axis.minValue << 16},
-        {name: 'defaultValue', type: 'FIXED', value: axis.defaultValue << 16},
-        {name: 'maxValue', type: 'FIXED', value: axis.maxValue << 16},
-        {name: 'flags', type: 'USHORT', value: 0},
-        {name: 'nameID', type: 'USHORT', value: nameID}
-    ]);
-}
-
-function parseFvarAxis(data, start, names) {
-    var axis = {};
-    var p = new parse.Parser(data, start);
-    axis.tag = p.parseTag();
-    axis.minValue = p.parseFixed();
-    axis.defaultValue = p.parseFixed();
-    axis.maxValue = p.parseFixed();
-    p.skip('uShort', 1);  // reserved for flags; no values defined
-    axis.name = names[p.parseUShort()] || {};
-    return axis;
-}
-
-function makeFvarInstance(inst, axes, names) {
-    var nameID = addName(inst.name, names);
-    var fields = [
-        {name: 'nameID', type: 'USHORT', value: nameID},
-        {name: 'flags', type: 'USHORT', value: 0}
-    ];
-
-    for (var i = 0; i < axes.length; ++i) {
-        var axisTag = axes[i].tag;
-        fields.push({
-            name: 'axis ' + axisTag,
-            type: 'FIXED',
-            value: inst.coordinates[axisTag] << 16
-        });
-    }
-
-    return new table.Table('fvarInstance', fields);
-}
-
-function parseFvarInstance(data, start, axes, names) {
-    var inst = {};
-    var p = new parse.Parser(data, start);
-    inst.name = names[p.parseUShort()] || {};
-    p.skip('uShort', 1);  // reserved for flags; no values defined
-
-    inst.coordinates = {};
-    for (var i = 0; i < axes.length; ++i) {
-        inst.coordinates[axes[i].tag] = p.parseFixed();
-    }
-
-    return inst;
-}
-
-function makeFvarTable(fvar, names) {
-    var result = new table.Table('fvar', [
-        {name: 'version', type: 'ULONG', value: 0x10000},
-        {name: 'offsetToData', type: 'USHORT', value: 0},
-        {name: 'countSizePairs', type: 'USHORT', value: 2},
-        {name: 'axisCount', type: 'USHORT', value: fvar.axes.length},
-        {name: 'axisSize', type: 'USHORT', value: 20},
-        {name: 'instanceCount', type: 'USHORT', value: fvar.instances.length},
-        {name: 'instanceSize', type: 'USHORT', value: 4 + fvar.axes.length * 4}
-    ]);
-    result.offsetToData = result.sizeOf();
-
-    for (var i = 0; i < fvar.axes.length; i++) {
-        result.fields.push({
-            name: 'axis ' + i,
-            type: 'TABLE',
-            value: makeFvarAxis(fvar.axes[i], names)});
-    }
-
-    for (var j = 0; j < fvar.instances.length; j++) {
-        result.fields.push({
-            name: 'instance ' + j,
-            type: 'TABLE',
-            value: makeFvarInstance(fvar.instances[j], fvar.axes, names)
-        });
-    }
-
-    return result;
-}
-
-function parseFvarTable(data, start, names) {
-    var p = new parse.Parser(data, start);
-    var tableVersion = p.parseULong();
-    check.argument(tableVersion === 0x00010000, 'Unsupported fvar table version.');
-    var offsetToData = p.parseOffset16();
-    // Skip countSizePairs.
-    p.skip('uShort', 1);
-    var axisCount = p.parseUShort();
-    var axisSize = p.parseUShort();
-    var instanceCount = p.parseUShort();
-    var instanceSize = p.parseUShort();
-
-    var axes = [];
-    for (var i = 0; i < axisCount; i++) {
-        axes.push(parseFvarAxis(data, start + offsetToData + i * axisSize, names));
-    }
-
-    var instances = [];
-    var instanceStart = start + offsetToData + axisCount * axisSize;
-    for (var j = 0; j < instanceCount; j++) {
-        instances.push(parseFvarInstance(data, instanceStart + j * instanceSize, axes, names));
-    }
-
-    return {axes:axes, instances:instances};
-}
-
-exports.make = makeFvarTable;
-exports.parse = parseFvarTable;
-
-},{"../check":2,"../parse":9,"../table":11}],15:[function(_dereq_,module,exports){
 // The `glyf` table describes the glyphs in TrueType outline format.
 // http://www.microsoft.com/typography/otspec/glyf.htm
 
@@ -3341,8 +3152,6 @@ function buildPath(glyphs, glyph) {
         for (var j = 0; j < glyph.components.length; j += 1) {
             var component = glyph.components[j];
             var componentGlyph = glyphs.get(component.glyphIndex);
-            // Force the ttfGlyphLoader to parse the glyph.
-            componentGlyph.getPath();
             if (componentGlyph.points) {
                 var transformedPoints = transformPoints(componentGlyph.points, component);
                 glyph.points = glyph.points.concat(transformedPoints);
@@ -3374,7 +3183,7 @@ function parseGlyfTable(data, start, loca, font) {
 
 exports.parse = parseGlyfTable;
 
-},{"../check":2,"../glyphset":7,"../parse":9,"../path":10}],16:[function(_dereq_,module,exports){
+},{"../check":2,"../glyphset":7,"../parse":9,"../path":10}],15:[function(_dereq_,module,exports){
 // The `GPOS` table contains kerning pairs, among other things.
 // https://www.microsoft.com/typography/OTSPEC/gpos.htm
 
@@ -3615,7 +3424,7 @@ function parseGposTable(data, start, font) {
 
 exports.parse = parseGposTable;
 
-},{"../check":2,"../parse":9}],17:[function(_dereq_,module,exports){
+},{"../check":2,"../parse":9}],16:[function(_dereq_,module,exports){
 // The `head` table contains global information about the font.
 // https://www.microsoft.com/typography/OTSPEC/head.htm
 
@@ -3675,7 +3484,7 @@ function makeHeadTable(options) {
 exports.parse = parseHeadTable;
 exports.make = makeHeadTable;
 
-},{"../check":2,"../parse":9,"../table":11}],18:[function(_dereq_,module,exports){
+},{"../check":2,"../parse":9,"../table":11}],17:[function(_dereq_,module,exports){
 // The `hhea` table contains information for horizontal layout.
 // https://www.microsoft.com/typography/OTSPEC/hhea.htm
 
@@ -3730,7 +3539,7 @@ function makeHheaTable(options) {
 exports.parse = parseHheaTable;
 exports.make = makeHheaTable;
 
-},{"../parse":9,"../table":11}],19:[function(_dereq_,module,exports){
+},{"../parse":9,"../table":11}],18:[function(_dereq_,module,exports){
 // The `hmtx` table contains the horizontal metrics for all glyphs.
 // https://www.microsoft.com/typography/OTSPEC/hmtx.htm
 
@@ -3774,7 +3583,7 @@ function makeHmtxTable(glyphs) {
 exports.parse = parseHmtxTable;
 exports.make = makeHmtxTable;
 
-},{"../parse":9,"../table":11}],20:[function(_dereq_,module,exports){
+},{"../parse":9,"../table":11}],19:[function(_dereq_,module,exports){
 // The `kern` table contains kerning pairs.
 // Note that some fonts use the GPOS OpenType layout table to specify kerning.
 // https://www.microsoft.com/typography/OTSPEC/kern.htm
@@ -3811,7 +3620,7 @@ function parseKernTable(data, start) {
 
 exports.parse = parseKernTable;
 
-},{"../check":2,"../parse":9}],21:[function(_dereq_,module,exports){
+},{"../check":2,"../parse":9}],20:[function(_dereq_,module,exports){
 // The `loca` table stores the offsets to the locations of the glyphs in the font.
 // https://www.microsoft.com/typography/OTSPEC/loca.htm
 
@@ -3846,70 +3655,7 @@ function parseLocaTable(data, start, numGlyphs, shortVersion) {
 
 exports.parse = parseLocaTable;
 
-},{"../parse":9}],22:[function(_dereq_,module,exports){
-// The `ltag` table stores IETF BCP-47 language tags. It allows supporting
-// languages for which TrueType does not assign a numeric code.
-// https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6ltag.html
-// http://www.w3.org/International/articles/language-tags/
-// http://www.iana.org/assignments/language-subtag-registry/language-subtag-registry
-
-'use strict';
-
-var check = _dereq_('../check');
-var parse = _dereq_('../parse');
-var table = _dereq_('../table');
-
-function makeLtagTable(tags) {
-    var result = new table.Table('ltag', [
-        {name: 'version', type: 'ULONG', value: 1},
-        {name: 'flags', type: 'ULONG', value: 0},
-        {name: 'numTags', type: 'ULONG', value: tags.length}
-    ]);
-
-    var stringPool = '';
-    var stringPoolOffset = 12 + tags.length * 4;
-    for (var i = 0; i < tags.length; ++i) {
-        var pos = stringPool.indexOf(tags[i]);
-        if (pos < 0) {
-            pos = stringPool.length;
-            stringPool += tags[i];
-        }
-
-        result.fields.push({name: 'offset ' + i, type: 'USHORT', value: stringPoolOffset + pos});
-        result.fields.push({name: 'length ' + i, type: 'USHORT', value: tags[i].length});
-    }
-
-    result.fields.push({name: 'stringPool', type: 'CHARARRAY', value: stringPool});
-    return result;
-}
-
-function parseLtagTable(data, start) {
-    var p = new parse.Parser(data, start);
-    var tableVersion = p.parseULong();
-    check.argument(tableVersion === 1, 'Unsupported ltag table version.');
-    // The 'ltag' specification does not define any flags; skip the field.
-    p.skip('uLong', 1);
-    var numTags = p.parseULong();
-
-    var tags = [];
-    for (var i = 0; i < numTags; i++) {
-        var tag = '';
-        var offset = start + p.parseUShort();
-        var length = p.parseUShort();
-        for (var j = offset; j < offset + length; ++j) {
-            tag += String.fromCharCode(data.getInt8(j));
-        }
-
-        tags.push(tag);
-    }
-
-    return tags;
-}
-
-exports.make = makeLtagTable;
-exports.parse = parseLtagTable;
-
-},{"../check":2,"../parse":9,"../table":11}],23:[function(_dereq_,module,exports){
+},{"../parse":9}],21:[function(_dereq_,module,exports){
 // The `maxp` table establishes the memory requirements for the font.
 // We need it just to get the number of glyphs in the font.
 // https://www.microsoft.com/typography/OTSPEC/maxp.htm
@@ -3954,15 +3700,13 @@ function makeMaxpTable(numGlyphs) {
 exports.parse = parseMaxpTable;
 exports.make = makeMaxpTable;
 
-},{"../parse":9,"../table":11}],24:[function(_dereq_,module,exports){
+},{"../parse":9,"../table":11}],22:[function(_dereq_,module,exports){
 // The `name` naming table.
 // https://www.microsoft.com/typography/OTSPEC/name.htm
 
 'use strict';
 
-var types = _dereq_('../types');
-var decode = types.decode;
-var encode = types.encode;
+var encode = _dereq_('../types').encode;
 var parse = _dereq_('../parse');
 var table = _dereq_('../table');
 
@@ -3993,653 +3737,51 @@ var nameTableNames = [
     'wwsSubfamily'            // 22
 ];
 
-var macLanguages = {
-    0: 'en',
-    1: 'fr',
-    2: 'de',
-    3: 'it',
-    4: 'nl',
-    5: 'sv',
-    6: 'es',
-    7: 'da',
-    8: 'pt',
-    9: 'no',
-    10: 'he',
-    11: 'ja',
-    12: 'ar',
-    13: 'fi',
-    14: 'el',
-    15: 'is',
-    16: 'mt',
-    17: 'tr',
-    18: 'hr',
-    19: 'zh-Hant',
-    20: 'ur',
-    21: 'hi',
-    22: 'th',
-    23: 'ko',
-    24: 'lt',
-    25: 'pl',
-    26: 'hu',
-    27: 'es',
-    28: 'lv',
-    29: 'se',
-    30: 'fo',
-    31: 'fa',
-    32: 'ru',
-    33: 'zh',
-    34: 'nl-BE',
-    35: 'ga',
-    36: 'sq',
-    37: 'ro',
-    38: 'cz',
-    39: 'sk',
-    40: 'si',
-    41: 'yi',
-    42: 'sr',
-    43: 'mk',
-    44: 'bg',
-    45: 'uk',
-    46: 'be',
-    47: 'uz',
-    48: 'kk',
-    49: 'az-Cyrl',
-    50: 'az-Arab',
-    51: 'hy',
-    52: 'ka',
-    53: 'mo',
-    54: 'ky',
-    55: 'tg',
-    56: 'tk',
-    57: 'mn-CN',
-    58: 'mn',
-    59: 'ps',
-    60: 'ks',
-    61: 'ku',
-    62: 'sd',
-    63: 'bo',
-    64: 'ne',
-    65: 'sa',
-    66: 'mr',
-    67: 'bn',
-    68: 'as',
-    69: 'gu',
-    70: 'pa',
-    71: 'or',
-    72: 'ml',
-    73: 'kn',
-    74: 'ta',
-    75: 'te',
-    76: 'si',
-    77: 'my',
-    78: 'km',
-    79: 'lo',
-    80: 'vi',
-    81: 'id',
-    82: 'tl',
-    83: 'ms',
-    84: 'ms-Arab',
-    85: 'am',
-    86: 'ti',
-    87: 'om',
-    88: 'so',
-    89: 'sw',
-    90: 'rw',
-    91: 'rn',
-    92: 'ny',
-    93: 'mg',
-    94: 'eo',
-    128: 'cy',
-    129: 'eu',
-    130: 'ca',
-    131: 'la',
-    132: 'qu',
-    133: 'gn',
-    134: 'ay',
-    135: 'tt',
-    136: 'ug',
-    137: 'dz',
-    138: 'jv',
-    139: 'su',
-    140: 'gl',
-    141: 'af',
-    142: 'br',
-    143: 'iu',
-    144: 'gd',
-    145: 'gv',
-    146: 'ga',
-    147: 'to',
-    148: 'el-polyton',
-    149: 'kl',
-    150: 'az',
-    151: 'nn'
-};
-
-// MacOS language ID → MacOS script ID
-//
-// Note that the script ID is not sufficient to determine what encoding
-// to use in TrueType files. For some languages, MacOS used a modification
-// of a mainstream script. For example, an Icelandic name would be stored
-// with smRoman in the TrueType naming table, but the actual encoding
-// is a special Icelandic version of the normal Macintosh Roman encoding.
-// As another example, Inuktitut uses an 8-bit encoding for Canadian Aboriginal
-// Syllables but MacOS had run out of available script codes, so this was
-// done as a (pretty radical) "modification" of Ethiopic.
-//
-// http://unicode.org/Public/MAPPINGS/VENDORS/APPLE/Readme.txt
-var macLanguageToScript = {
-    0: 0,  // langEnglish → smRoman
-    1: 0,  // langFrench → smRoman
-    2: 0,  // langGerman → smRoman
-    3: 0,  // langItalian → smRoman
-    4: 0,  // langDutch → smRoman
-    5: 0,  // langSwedish → smRoman
-    6: 0,  // langSpanish → smRoman
-    7: 0,  // langDanish → smRoman
-    8: 0,  // langPortuguese → smRoman
-    9: 0,  // langNorwegian → smRoman
-    10: 5,  // langHebrew → smHebrew
-    11: 1,  // langJapanese → smJapanese
-    12: 4,  // langArabic → smArabic
-    13: 0,  // langFinnish → smRoman
-    14: 6,  // langGreek → smGreek
-    15: 0,  // langIcelandic → smRoman (modified)
-    16: 0,  // langMaltese → smRoman
-    17: 0,  // langTurkish → smRoman (modified)
-    18: 0,  // langCroatian → smRoman (modified)
-    19: 2,  // langTradChinese → smTradChinese
-    20: 4,  // langUrdu → smArabic
-    21: 9,  // langHindi → smDevanagari
-    22: 21,  // langThai → smThai
-    23: 3,  // langKorean → smKorean
-    24: 29,  // langLithuanian → smCentralEuroRoman
-    25: 29,  // langPolish → smCentralEuroRoman
-    26: 29,  // langHungarian → smCentralEuroRoman
-    27: 29,  // langEstonian → smCentralEuroRoman
-    28: 29,  // langLatvian → smCentralEuroRoman
-    29: 0,  // langSami → smRoman
-    30: 0,  // langFaroese → smRoman (modified)
-    31: 4,  // langFarsi → smArabic (modified)
-    32: 7,  // langRussian → smCyrillic
-    33: 25,  // langSimpChinese → smSimpChinese
-    34: 0,  // langFlemish → smRoman
-    35: 0,  // langIrishGaelic → smRoman (modified)
-    36: 0,  // langAlbanian → smRoman
-    37: 0,  // langRomanian → smRoman (modified)
-    38: 29,  // langCzech → smCentralEuroRoman
-    39: 29,  // langSlovak → smCentralEuroRoman
-    40: 0,  // langSlovenian → smRoman (modified)
-    41: 5,  // langYiddish → smHebrew
-    42: 7,  // langSerbian → smCyrillic
-    43: 7,  // langMacedonian → smCyrillic
-    44: 7,  // langBulgarian → smCyrillic
-    45: 7,  // langUkrainian → smCyrillic (modified)
-    46: 7,  // langByelorussian → smCyrillic
-    47: 7,  // langUzbek → smCyrillic
-    48: 7,  // langKazakh → smCyrillic
-    49: 7,  // langAzerbaijani → smCyrillic
-    50: 4,  // langAzerbaijanAr → smArabic
-    51: 24,  // langArmenian → smArmenian
-    52: 23,  // langGeorgian → smGeorgian
-    53: 7,  // langMoldavian → smCyrillic
-    54: 7,  // langKirghiz → smCyrillic
-    55: 7,  // langTajiki → smCyrillic
-    56: 7,  // langTurkmen → smCyrillic
-    57: 27,  // langMongolian → smMongolian
-    58: 7,  // langMongolianCyr → smCyrillic
-    59: 4,  // langPashto → smArabic
-    60: 4,  // langKurdish → smArabic
-    61: 4,  // langKashmiri → smArabic
-    62: 4,  // langSindhi → smArabic
-    63: 26,  // langTibetan → smTibetan
-    64: 9,  // langNepali → smDevanagari
-    65: 9,  // langSanskrit → smDevanagari
-    66: 9,  // langMarathi → smDevanagari
-    67: 13,  // langBengali → smBengali
-    68: 13,  // langAssamese → smBengali
-    69: 11,  // langGujarati → smGujarati
-    70: 10,  // langPunjabi → smGurmukhi
-    71: 12,  // langOriya → smOriya
-    72: 17,  // langMalayalam → smMalayalam
-    73: 16,  // langKannada → smKannada
-    74: 14,  // langTamil → smTamil
-    75: 15,  // langTelugu → smTelugu
-    76: 18,  // langSinhalese → smSinhalese
-    77: 19,  // langBurmese → smBurmese
-    78: 20,  // langKhmer → smKhmer
-    79: 22,  // langLao → smLao
-    80: 30,  // langVietnamese → smVietnamese
-    81: 0,  // langIndonesian → smRoman
-    82: 0,  // langTagalog → smRoman
-    83: 0,  // langMalayRoman → smRoman
-    84: 4,  // langMalayArabic → smArabic
-    85: 28,  // langAmharic → smEthiopic
-    86: 28,  // langTigrinya → smEthiopic
-    87: 28,  // langOromo → smEthiopic
-    88: 0,  // langSomali → smRoman
-    89: 0,  // langSwahili → smRoman
-    90: 0,  // langKinyarwanda → smRoman
-    91: 0,  // langRundi → smRoman
-    92: 0,  // langNyanja → smRoman
-    93: 0,  // langMalagasy → smRoman
-    94: 0,  // langEsperanto → smRoman
-    128: 0,  // langWelsh → smRoman (modified)
-    129: 0,  // langBasque → smRoman
-    130: 0,  // langCatalan → smRoman
-    131: 0,  // langLatin → smRoman
-    132: 0,  // langQuechua → smRoman
-    133: 0,  // langGuarani → smRoman
-    134: 0,  // langAymara → smRoman
-    135: 7,  // langTatar → smCyrillic
-    136: 4,  // langUighur → smArabic
-    137: 26,  // langDzongkha → smTibetan
-    138: 0,  // langJavaneseRom → smRoman
-    139: 0,  // langSundaneseRom → smRoman
-    140: 0,  // langGalician → smRoman
-    141: 0,  // langAfrikaans → smRoman
-    142: 0,  // langBreton → smRoman (modified)
-    143: 28,  // langInuktitut → smEthiopic (modified)
-    144: 0,  // langScottishGaelic → smRoman (modified)
-    145: 0,  // langManxGaelic → smRoman (modified)
-    146: 0,  // langIrishGaelicScript → smRoman (modified)
-    147: 0,  // langTongan → smRoman
-    148: 6,  // langGreekAncient → smRoman
-    149: 0,  // langGreenlandic → smRoman
-    150: 0,  // langAzerbaijanRoman → smRoman
-    151: 0   // langNynorsk → smRoman
-};
-
-// While Microsoft indicates a region/country for all its language
-// IDs, we omit the region code if it's equal to the "most likely
-// region subtag" according to Unicode CLDR. For scripts, we omit
-// the subtag if it is equal to the Suppress-Script entry in the
-// IANA language subtag registry for IETF BCP 47.
-//
-// For example, Microsoft states that its language code 0x041A is
-// Croatian in Croatia. We transform this to the BCP 47 language code 'hr'
-// and not 'hr-HR' because Croatia is the default country for Croatian,
-// according to Unicode CLDR. As another example, Microsoft states
-// that 0x101A is Croatian (Latin) in Bosnia-Herzegovina. We transform
-// this to 'hr-BA' and not 'hr-Latn-BA' because Latin is the default script
-// for the Croatian language, according to IANA.
-//
-// http://www.unicode.org/cldr/charts/latest/supplemental/likely_subtags.html
-// http://www.iana.org/assignments/language-subtag-registry/language-subtag-registry
-var windowsLanguages = {
-    0x0436: 'af',
-    0x041C: 'sq',
-    0x0484: 'gsw',
-    0x045E: 'am',
-    0x1401: 'ar-DZ',
-    0x3C01: 'ar-BH',
-    0x0C01: 'ar',
-    0x0801: 'ar-IQ',
-    0x2C01: 'ar-JO',
-    0x3401: 'ar-KW',
-    0x3001: 'ar-LB',
-    0x1001: 'ar-LY',
-    0x1801: 'ary',
-    0x2001: 'ar-OM',
-    0x4001: 'ar-QA',
-    0x0401: 'ar-SA',
-    0x2801: 'ar-SY',
-    0x1C01: 'aeb',
-    0x3801: 'ar-AE',
-    0x2401: 'ar-YE',
-    0x042B: 'hy',
-    0x044D: 'as',
-    0x082C: 'az-Cyrl',
-    0x042C: 'az',
-    0x046D: 'ba',
-    0x042D: 'eu',
-    0x0423: 'be',
-    0x0845: 'bn',
-    0x0445: 'bn-IN',
-    0x201A: 'bs-Cyrl',
-    0x141A: 'bs',
-    0x047E: 'br',
-    0x0402: 'bg',
-    0x0403: 'ca',
-    0x0C04: 'zh-HK',
-    0x1404: 'zh-MO',
-    0x0804: 'zh',
-    0x1004: 'zh-SG',
-    0x0404: 'zh-TW',
-    0x0483: 'co',
-    0x041A: 'hr',
-    0x101A: 'hr-BA',
-    0x0405: 'cs',
-    0x0406: 'da',
-    0x048C: 'prs',
-    0x0465: 'dv',
-    0x0813: 'nl-BE',
-    0x0413: 'nl',
-    0x0C09: 'en-AU',
-    0x2809: 'en-BZ',
-    0x1009: 'en-CA',
-    0x2409: 'en-029',
-    0x4009: 'en-IN',
-    0x1809: 'en-IE',
-    0x2009: 'en-JM',
-    0x4409: 'en-MY',
-    0x1409: 'en-NZ',
-    0x3409: 'en-PH',
-    0x4809: 'en-SG',
-    0x1C09: 'en-ZA',
-    0x2C09: 'en-TT',
-    0x0809: 'en-GB',
-    0x0409: 'en',
-    0x3009: 'en-ZW',
-    0x0425: 'et',
-    0x0438: 'fo',
-    0x0464: 'fil',
-    0x040B: 'fi',
-    0x080C: 'fr-BE',
-    0x0C0C: 'fr-CA',
-    0x040C: 'fr',
-    0x140C: 'fr-LU',
-    0x180C: 'fr-MC',
-    0x100C: 'fr-CH',
-    0x0462: 'fy',
-    0x0456: 'gl',
-    0x0437: 'ka',
-    0x0C07: 'de-AT',
-    0x0407: 'de',
-    0x1407: 'de-LI',
-    0x1007: 'de-LU',
-    0x0807: 'de-CH',
-    0x0408: 'el',
-    0x046F: 'kl',
-    0x0447: 'gu',
-    0x0468: 'ha',
-    0x040D: 'he',
-    0x0439: 'hi',
-    0x040E: 'hu',
-    0x040F: 'is',
-    0x0470: 'ig',
-    0x0421: 'id',
-    0x045D: 'iu',
-    0x085D: 'iu-Latn',
-    0x083C: 'ga',
-    0x0434: 'xh',
-    0x0435: 'zu',
-    0x0410: 'it',
-    0x0810: 'it-CH',
-    0x0411: 'ja',
-    0x044B: 'kn',
-    0x043F: 'kk',
-    0x0453: 'km',
-    0x0486: 'quc',
-    0x0487: 'rw',
-    0x0441: 'sw',
-    0x0457: 'kok',
-    0x0412: 'ko',
-    0x0440: 'ky',
-    0x0454: 'lo',
-    0x0426: 'lv',
-    0x0427: 'lt',
-    0x082E: 'dsb',
-    0x046E: 'lb',
-    0x042F: 'mk',
-    0x083E: 'ms-BN',
-    0x043E: 'ms',
-    0x044C: 'ml',
-    0x043A: 'mt',
-    0x0481: 'mi',
-    0x047A: 'arn',
-    0x044E: 'mr',
-    0x047C: 'moh',
-    0x0450: 'mn',
-    0x0850: 'mn-CN',
-    0x0461: 'ne',
-    0x0414: 'nb',
-    0x0814: 'nn',
-    0x0482: 'oc',
-    0x0448: 'or',
-    0x0463: 'ps',
-    0x0415: 'pl',
-    0x0416: 'pt',
-    0x0816: 'pt-PT',
-    0x0446: 'pa',
-    0x046B: 'qu-BO',
-    0x086B: 'qu-EC',
-    0x0C6B: 'qu',
-    0x0418: 'ro',
-    0x0417: 'rm',
-    0x0419: 'ru',
-    0x243B: 'smn',
-    0x103B: 'smj-NO',
-    0x143B: 'smj',
-    0x0C3B: 'se-FI',
-    0x043B: 'se',
-    0x083B: 'se-SE',
-    0x203B: 'sms',
-    0x183B: 'sma-NO',
-    0x1C3B: 'sms',
-    0x044F: 'sa',
-    0x1C1A: 'sr-Cyrl-BA',
-    0x0C1A: 'sr',
-    0x181A: 'sr-Latn-BA',
-    0x081A: 'sr-Latn',
-    0x046C: 'nso',
-    0x0432: 'tn',
-    0x045B: 'si',
-    0x041B: 'sk',
-    0x0424: 'sl',
-    0x2C0A: 'es-AR',
-    0x400A: 'es-BO',
-    0x340A: 'es-CL',
-    0x240A: 'es-CO',
-    0x140A: 'es-CR',
-    0x1C0A: 'es-DO',
-    0x300A: 'es-EC',
-    0x440A: 'es-SV',
-    0x100A: 'es-GT',
-    0x480A: 'es-HN',
-    0x080A: 'es-MX',
-    0x4C0A: 'es-NI',
-    0x180A: 'es-PA',
-    0x3C0A: 'es-PY',
-    0x280A: 'es-PE',
-    0x500A: 'es-PR',
-
-    // Microsoft has defined two different language codes for
-    // “Spanish with modern sorting” and “Spanish with traditional
-    // sorting”. This makes sense for collation APIs, and it would be
-    // possible to express this in BCP 47 language tags via Unicode
-    // extensions (eg., es-u-co-trad is Spanish with traditional
-    // sorting). However, for storing names in fonts, the distinction
-    // does not make sense, so we give “es” in both cases.
-    0x0C0A: 'es',
-    0x040A: 'es',
-
-    0x540A: 'es-US',
-    0x380A: 'es-UY',
-    0x200A: 'es-VE',
-    0x081D: 'sv-FI',
-    0x041D: 'sv',
-    0x045A: 'syr',
-    0x0428: 'tg',
-    0x085F: 'tzm',
-    0x0449: 'ta',
-    0x0444: 'tt',
-    0x044A: 'te',
-    0x041E: 'th',
-    0x0451: 'bo',
-    0x041F: 'tr',
-    0x0442: 'tk',
-    0x0480: 'ug',
-    0x0422: 'uk',
-    0x042E: 'hsb',
-    0x0420: 'ur',
-    0x0843: 'uz-Cyrl',
-    0x0443: 'uz',
-    0x042A: 'vi',
-    0x0452: 'cy',
-    0x0488: 'wo',
-    0x0485: 'sah',
-    0x0478: 'ii',
-    0x046A: 'yo'
-};
-
-// Returns a IETF BCP 47 language code, for example 'zh-Hant'
-// for 'Chinese in the traditional script'.
-function getLanguageCode(platformID, languageID, ltag) {
-    switch (platformID) {
-    case 0:  // Unicode
-        if (languageID === 0xFFFF) {
-            return 'und';
-        } else if (ltag) {
-            return ltag[languageID];
-        }
-
-        break;
-
-    case 1:  // Macintosh
-        return macLanguages[languageID];
-
-    case 3:  // Windows
-        return windowsLanguages[languageID];
-    }
-
-    return undefined;
-}
-
-var utf16 = 'utf-16';
-
-// MacOS script ID → encoding. This table stores the default case,
-// which can be overridden by macLanguageEncodings.
-var macScriptEncodings = {
-    0: 'macintosh',           // smRoman
-    1: 'x-mac-japanese',      // smJapanese
-    2: 'x-mac-chinesetrad',   // smTradChinese
-    3: 'x-mac-korean',        // smKorean
-    6: 'x-mac-greek',         // smGreek
-    7: 'x-mac-cyrillic',      // smCyrillic
-    9: 'x-mac-devanagai',     // smDevanagari
-    10: 'x-mac-gurmukhi',     // smGurmukhi
-    11: 'x-mac-gujarati',     // smGujarati
-    12: 'x-mac-oriya',        // smOriya
-    13: 'x-mac-bengali',      // smBengali
-    14: 'x-mac-tamil',        // smTamil
-    15: 'x-mac-telugu',       // smTelugu
-    16: 'x-mac-kannada',      // smKannada
-    17: 'x-mac-malayalam',    // smMalayalam
-    18: 'x-mac-sinhalese',    // smSinhalese
-    19: 'x-mac-burmese',      // smBurmese
-    20: 'x-mac-khmer',        // smKhmer
-    21: 'x-mac-thai',         // smThai
-    22: 'x-mac-lao',          // smLao
-    23: 'x-mac-georgian',     // smGeorgian
-    24: 'x-mac-armenian',     // smArmenian
-    25: 'x-mac-chinesesimp',  // smSimpChinese
-    26: 'x-mac-tibetan',      // smTibetan
-    27: 'x-mac-mongolian',    // smMongolian
-    28: 'x-mac-ethiopic',     // smEthiopic
-    29: 'x-mac-ce',           // smCentralEuroRoman
-    30: 'x-mac-vietnamese',   // smVietnamese
-    31: 'x-mac-extarabic'     // smExtArabic
-};
-
-// MacOS language ID → encoding. This table stores the exceptional
-// cases, which override macScriptEncodings. For writing MacOS naming
-// tables, we need to emit a MacOS script ID. Therefore, we cannot
-// merge macScriptEncodings into macLanguageEncodings.
-//
-// http://unicode.org/Public/MAPPINGS/VENDORS/APPLE/Readme.txt
-var macLanguageEncodings = {
-    15: 'x-mac-icelandic',    // langIcelandic
-    17: 'x-mac-turkish',      // langTurkish
-    18: 'x-mac-croatian',     // langCroatian
-    24: 'x-mac-ce',           // langLithuanian
-    25: 'x-mac-ce',           // langPolish
-    26: 'x-mac-ce',           // langHungarian
-    27: 'x-mac-ce',           // langEstonian
-    28: 'x-mac-ce',           // langLatvian
-    30: 'x-mac-icelandic',    // langFaroese
-    37: 'x-mac-romanian',     // langRomanian
-    38: 'x-mac-ce',           // langCzech
-    39: 'x-mac-ce',           // langSlovak
-    40: 'x-mac-ce',           // langSlovenian
-    143: 'x-mac-inuit',       // langInuktitut
-    146: 'x-mac-gaelic'       // langIrishGaelicScript
-};
-
-function getEncoding(platformID, encodingID, languageID) {
-    switch (platformID) {
-    case 0:  // Unicode
-        return utf16;
-
-    case 1:  // Apple Macintosh
-        return macLanguageEncodings[languageID] || macScriptEncodings[encodingID];
-
-    case 3:  // Microsoft Windows
-        if (encodingID === 1 || encodingID === 10) {
-            return utf16;
-        }
-
-        break;
-    }
-
-    return undefined;
-}
-
-// Parse the naming `name` table.
-// FIXME: Format 1 additional fields are not supported yet.
-// ltag is the content of the `ltag' table, such as ['en', 'zh-Hans', 'de-CH-1904'].
-function parseNameTable(data, start, ltag) {
+// Parse the naming `name` table
+// Only Windows Unicode English names are supported.
+// Format 1 additional fields are not supported
+function parseNameTable(data, start) {
     var name = {};
     var p = new parse.Parser(data, start);
-    var format = p.parseUShort();
+    name.format = p.parseUShort();
     var count = p.parseUShort();
     var stringOffset = p.offset + p.parseUShort();
+    var unknownCount = 0;
     for (var i = 0; i < count; i++) {
         var platformID = p.parseUShort();
         var encodingID = p.parseUShort();
         var languageID = p.parseUShort();
         var nameID = p.parseUShort();
-        var property = nameTableNames[nameID] || nameID;
+        var property = nameTableNames[nameID];
         var byteLength = p.parseUShort();
         var offset = p.parseUShort();
-        var language = getLanguageCode(platformID, languageID, ltag);
-        var encoding = getEncoding(platformID, encodingID, languageID);
-        if (encoding !== undefined && language !== undefined) {
-            var text;
-            if (encoding === utf16) {
-                text = decode.UTF16(data, stringOffset + offset, byteLength);
-            } else {
-                text = decode.MACSTRING(data, stringOffset + offset, byteLength, encoding);
+        // platformID - encodingID - languageID standard combinations :
+        // 1 - 0 - 0 : Macintosh, Roman, English
+        // 3 - 1 - 0x409 : Windows, Unicode BMP (UCS-2), en-US
+        if (platformID === 3 && encodingID === 1 && languageID === 0x409) {
+            var codePoints = [];
+            var length = byteLength / 2;
+            for (var j = 0; j < length; j++, offset += 2) {
+                codePoints[j] = parse.getShort(data, stringOffset + offset);
             }
 
-            if (text) {
-                var translations = name[property];
-                if (translations === undefined) {
-                    translations = name[property] = {};
-                }
-
-                translations[language] = text;
+            var str = String.fromCharCode.apply(null, codePoints);
+            if (property) {
+                name[property] = str;
+            }
+            else {
+                unknownCount++;
+                name['unknown' + unknownCount] = str;
             }
         }
+
     }
 
-    var langTagCount = 0;
-    if (format === 1) {
-        // FIXME: Also handle Microsoft's 'name' table 1.
-        langTagCount = p.parseUShort();
+    if (name.format === 1) {
+        name.langTagCount = p.parseUShort();
     }
 
     return name;
-}
-
-// {23: 'foo'} → {'foo': 23}
-// ['bar', 'baz'] → {'bar': 0, 'baz': 1}
-function reverseDict(dict) {
-    var result = {};
-    for (var key in dict) {
-        result[dict[key]] = parseInt(key);
-    }
-
-    return result;
 }
 
 function makeNameRecord(platformID, encodingID, languageID, nameID, length, offset) {
@@ -4653,140 +3795,67 @@ function makeNameRecord(platformID, encodingID, languageID, nameID, length, offs
     ]);
 }
 
-// Finds the position of needle in haystack, or -1 if not there.
-// Like String.indexOf(), but for arrays.
-function findSubArray(needle, haystack) {
-    var needleLength = needle.length;
-    var limit = haystack.length - needleLength + 1;
-
-    loop:
-    for (var pos = 0; pos < limit; pos++) {
-        for (; pos < limit; pos++) {
-            for (var k = 0; k < needleLength; k++) {
-                if (haystack[pos + k] !== needle[k]) {
-                    continue loop;
-                }
-            }
-
-            return pos;
-        }
-    }
-
-    return -1;
-}
-
-function addStringToPool(s, pool) {
-    var offset = findSubArray(s, pool);
-    if (offset < 0) {
-        offset = pool.length;
-        for (var i = 0, len = s.length; i < len; ++i) {
-            pool.push(s[i]);
-        }
-
-    }
-
+function addMacintoshNameRecord(t, recordID, s, offset) {
+    // Macintosh, Roman, English
+    var stringBytes = encode.STRING(s);
+    t.records.push(makeNameRecord(1, 0, 0, recordID, stringBytes.length, offset));
+    t.strings.push(stringBytes);
+    offset += stringBytes.length;
     return offset;
 }
 
-function makeNameTable(names, ltag) {
-    var nameID;
-    var nameIDs = [];
+function addWindowsNameRecord(t, recordID, s, offset) {
+    // Windows, Unicode BMP (UCS-2), US English
+    var utf16Bytes = encode.UTF16(s);
+    t.records.push(makeNameRecord(3, 1, 0x0409, recordID, utf16Bytes.length, offset));
+    t.strings.push(utf16Bytes);
+    offset += utf16Bytes.length;
+    return offset;
+}
 
-    var namesWithNumericKeys = {};
-    var nameTableIds = reverseDict(nameTableNames);
-    for (var key in names) {
-        var id = nameTableIds[key];
-        if (id === undefined) {
-            id = key;
-        }
-
-        nameID = parseInt(id);
-        namesWithNumericKeys[nameID] = names[key];
-        nameIDs.push(nameID);
-    }
-
-    var macLanguageIds = reverseDict(macLanguages);
-    var windowsLanguageIds = reverseDict(windowsLanguages);
-
-    var nameRecords = [];
-    var stringPool = [];
-
-    for (var i = 0; i < nameIDs.length; i++) {
-        nameID = nameIDs[i];
-        var translations = namesWithNumericKeys[nameID];
-        for (var lang in translations) {
-            var text = translations[lang];
-
-            // For MacOS, we try to emit the name in the form that was introduced
-            // in the initial version of the TrueType spec (in the late 1980s).
-            // However, this can fail for various reasons: the requested BCP 47
-            // language code might not have an old-style Mac equivalent;
-            // we might not have a codec for the needed character encoding;
-            // or the name might contain characters that cannot be expressed
-            // in the old-style Macintosh encoding. In case of failure, we emit
-            // the name in a more modern fashion (Unicode encoding with BCP 47
-            // language tags) that is recognized by MacOS 10.5, released in 2009.
-            // If fonts were only read by operating systems, we could simply
-            // emit all names in the modern form; this would be much easier.
-            // However, there are many applications and libraries that read
-            // 'name' tables directly, and these will usually only recognize
-            // the ancient form (silently skipping the unrecognized names).
-            var macPlatform = 1;  // Macintosh
-            var macLanguage = macLanguageIds[lang];
-            var macScript = macLanguageToScript[macLanguage];
-            var macEncoding = getEncoding(macPlatform, macScript, macLanguage);
-            var macName = encode.MACSTRING(text, macEncoding);
-            if (macName === undefined) {
-                macPlatform = 0;  // Unicode
-                macLanguage = ltag.indexOf(lang);
-                if (macLanguage < 0) {
-                    macLanguage = ltag.length;
-                    ltag.push(lang);
-                }
-
-                macScript = 4;  // Unicode 2.0 and later
-                macName = encode.UTF16(text);
-            }
-
-            var macNameOffset = addStringToPool(macName, stringPool);
-            nameRecords.push(makeNameRecord(macPlatform, macScript, macLanguage,
-                                            nameID, macName.length, macNameOffset));
-
-            var winLanguage = windowsLanguageIds[lang];
-            if (winLanguage !== undefined) {
-                var winName = encode.UTF16(text);
-                var winNameOffset = addStringToPool(winName, stringPool);
-                nameRecords.push(makeNameRecord(3, 1, winLanguage,
-                                                nameID, winName.length, winNameOffset));
-            }
-        }
-    }
-
-    nameRecords.sort(function(a, b) {
-        return ((a.platformID - b.platformID) ||
-                (a.encodingID - b.encodingID) ||
-                (a.languageID - b.languageID) ||
-                (a.nameID - b.nameID));
-    });
-
+function makeNameTable(options) {
     var t = new table.Table('name', [
         {name: 'format', type: 'USHORT', value: 0},
-        {name: 'count', type: 'USHORT', value: nameRecords.length},
-        {name: 'stringOffset', type: 'USHORT', value: 6 + nameRecords.length * 12}
+        {name: 'count', type: 'USHORT', value: 0},
+        {name: 'stringOffset', type: 'USHORT', value: 0}
     ]);
-
-    for (var r = 0; r < nameRecords.length; r++) {
-        t.fields.push({name: 'record_' + r, type: 'TABLE', value: nameRecords[r]});
+    t.records = [];
+    t.strings = [];
+    var offset = 0;
+    var i;
+    var s;
+    // Add Macintosh records first
+    for (i = 0; i < nameTableNames.length; i += 1) {
+        if (options[nameTableNames[i]] !== undefined) {
+            s = options[nameTableNames[i]];
+            offset = addMacintoshNameRecord(t, i, s, offset);
+        }
+    }
+    // Then add Windows records
+    for (i = 0; i < nameTableNames.length; i += 1) {
+        if (options[nameTableNames[i]] !== undefined) {
+            s = options[nameTableNames[i]];
+            offset = addWindowsNameRecord(t, i, s, offset);
+        }
     }
 
-    t.fields.push({name: 'strings', type: 'LITERAL', value: stringPool});
+    t.count = t.records.length;
+    t.stringOffset = 6 + t.count * 12;
+    for (i = 0; i < t.records.length; i += 1) {
+        t.fields.push({name: 'record_' + i, type: 'TABLE', value: t.records[i]});
+    }
+
+    for (i = 0; i < t.strings.length; i += 1) {
+        t.fields.push({name: 'string_' + i, type: 'LITERAL', value: t.strings[i]});
+    }
+
     return t;
 }
 
 exports.parse = parseNameTable;
 exports.make = makeNameTable;
 
-},{"../parse":9,"../table":11,"../types":28}],25:[function(_dereq_,module,exports){
+},{"../parse":9,"../table":11,"../types":26}],23:[function(_dereq_,module,exports){
 // The `OS/2` table contains metrics required in OpenType fonts.
 // https://www.microsoft.com/typography/OTSPEC/os2.htm
 
@@ -5042,7 +4111,7 @@ exports.getUnicodeRange = getUnicodeRange;
 exports.parse = parseOS2Table;
 exports.make = makeOS2Table;
 
-},{"../parse":9,"../table":11}],26:[function(_dereq_,module,exports){
+},{"../parse":9,"../table":11}],24:[function(_dereq_,module,exports){
 // The `post` table stores additional PostScript information, such as glyph names.
 // https://www.microsoft.com/typography/OTSPEC/post.htm
 
@@ -5115,7 +4184,7 @@ function makePostTable() {
 exports.parse = parsePostTable;
 exports.make = makePostTable;
 
-},{"../encoding":4,"../parse":9,"../table":11}],27:[function(_dereq_,module,exports){
+},{"../encoding":4,"../parse":9,"../table":11}],25:[function(_dereq_,module,exports){
 // The `sfnt` wrapper provides organization for the tables in the font.
 // It is the top-level data structure in a font.
 // https://www.microsoft.com/typography/OTSPEC/otff.htm
@@ -5132,7 +4201,6 @@ var cff = _dereq_('./cff');
 var head = _dereq_('./head');
 var hhea = _dereq_('./hhea');
 var hmtx = _dereq_('./hmtx');
-var ltag = _dereq_('./ltag');
 var maxp = _dereq_('./maxp');
 var _name = _dereq_('./name');
 var os2 = _dereq_('./os2');
@@ -5358,54 +4426,38 @@ function fontToSfntTable(font) {
     var hmtxTable = hmtx.make(font.glyphs);
     var cmapTable = cmap.make(font.glyphs);
 
-    var englishFamilyName = font.getEnglishName('fontFamily');
-    var englishStyleName = font.getEnglishName('fontSubfamily');
-    var englishFullName = englishFamilyName + ' ' + englishStyleName;
-    var postScriptName = font.getEnglishName('postScriptName');
-    if (!postScriptName) {
-        postScriptName = englishFamilyName.replace(/\s/g, '') + '-' + englishStyleName;
-    }
-
-    var names = {};
-    for (var n in font.names) {
-        names[n] = font.names[n];
-    }
-
-    if (!names.uniqueID) {
-        names.uniqueID = {en: font.getEnglishName('manufacturer') + ':' + englishFullName};
-    }
-
-    if (!names.postScriptName) {
-        names.postScriptName = {en: postScriptName};
-    }
-
-    if (!names.preferredFamily) {
-        names.preferredFamily = font.names.fontFamily;
-    }
-
-    if (!names.preferredSubfamily) {
-        names.preferredSubfamily = font.names.fontSubfamily;
-    }
-
-    var languageTags = [];
-    var nameTable = _name.make(names, languageTags);
-    var ltagTable = (languageTags.length > 0 ? ltag.make(languageTags) : undefined);
-
+    var fullName = font.familyName + ' ' + font.styleName;
+    var postScriptName = font.familyName.replace(/\s/g, '') + '-' + font.styleName;
+    var nameTable = _name.make({
+        copyright: font.copyright,
+        fontFamily: font.familyName,
+        fontSubfamily: font.styleName,
+        uniqueID: font.manufacturer + ':' + fullName,
+        fullName: fullName,
+        version: font.version,
+        postScriptName: postScriptName,
+        trademark: font.trademark,
+        manufacturer: font.manufacturer,
+        designer: font.designer,
+        description: font.description,
+        manufacturerURL: font.manufacturerURL,
+        designerURL: font.designerURL,
+        license: font.license,
+        licenseURL: font.licenseURL,
+        preferredFamily: font.familyName,
+        preferredSubfamily: font.styleName
+    });
     var postTable = post.make();
     var cffTable = cff.make(font.glyphs, {
-        version: font.getEnglishName('version'),
-        fullName: englishFullName,
-        familyName: englishFamilyName,
-        weightName: englishStyleName,
+        version: font.version,
+        fullName: fullName,
+        familyName: font.familyName,
+        weightName: font.styleName,
         postScriptName: postScriptName,
         unitsPerEm: font.unitsPerEm
     });
-
-    // The order does not matter because makeSfntTable() will sort them.
+    // Order the tables according to the the OpenType specification 1.4.
     var tables = [headTable, hheaTable, maxpTable, os2Table, nameTable, cmapTable, postTable, cffTable, hmtxTable];
-    if (ltagTable) {
-        tables.push(ltagTable);
-    }
 
     var sfntTable = makeSfntTable(tables);
 
@@ -5433,7 +4485,7 @@ exports.computeCheckSum = computeCheckSum;
 exports.make = makeSfntTable;
 exports.fontToTable = fontToSfntTable;
 
-},{"../check":2,"../table":11,"./cff":12,"./cmap":13,"./head":17,"./hhea":18,"./hmtx":19,"./ltag":22,"./maxp":23,"./name":24,"./os2":25,"./post":26}],28:[function(_dereq_,module,exports){
+},{"../check":2,"../table":11,"./cff":12,"./cmap":13,"./head":16,"./hhea":17,"./hmtx":18,"./maxp":21,"./name":22,"./os2":23,"./post":24}],26:[function(_dereq_,module,exports){
 // Data types used in the OpenType font file.
 // All OpenType fonts use Motorola-style byte ordering (Big Endian)
 
@@ -5472,7 +4524,7 @@ encode.CHAR = function(v) {
     return [v.charCodeAt(0)];
 };
 
-sizeOf.CHAR = constant(1);
+sizeOf.BYTE = constant(1);
 
 // Convert an ASCII string to a list of bytes.
 encode.CHARARRAY = function(v) {
@@ -5601,16 +4653,16 @@ encode.NUMBER16 = function(v) {
     return [28, (v >> 8) & 0xFF, v & 0xFF];
 };
 
-sizeOf.NUMBER16 = constant(3);
+sizeOf.NUMBER16 = constant(2);
 
-// Convert a signed number between -(2^31) and +(2^31-1) to a five-byte value.
+// Convert a signed number between -(2^31) and +(2^31-1) to a four-byte value.
 // This is useful if you want to be sure you always use four bytes,
 // at the expense of wasting a few bytes for smaller numbers.
 encode.NUMBER32 = function(v) {
     return [29, (v >> 24) & 0xFF, (v >> 16) & 0xFF, (v >> 8) & 0xFF, v & 0xFF];
 };
 
-sizeOf.NUMBER32 = constant(5);
+sizeOf.NUMBER32 = constant(4);
 
 encode.REAL = function(v) {
     var value = v.toString();
@@ -5658,23 +4710,12 @@ sizeOf.NAME = sizeOf.CHARARRAY;
 encode.STRING = encode.CHARARRAY;
 sizeOf.STRING = sizeOf.CHARARRAY;
 
-decode.UTF16 = function(data, offset, numBytes) {
-    var codePoints = [];
-    var numChars = numBytes / 2;
-    for (var j = 0; j < numChars; j++, offset += 2) {
-        codePoints[j] = data.getUint16(offset);
-    }
-
-    return String.fromCharCode.apply(null, codePoints);
-};
-
-// Convert a JavaScript string to UTF16-BE.
+// Convert a ASCII string to a list of UTF16 bytes.
 encode.UTF16 = function(v) {
     var b = [];
     for (var i = 0; i < v.length; i += 1) {
-        var codepoint = v.charCodeAt(i);
-        b.push((codepoint >> 8) & 0xFF);
-        b.push(codepoint & 0xFF);
+        b.push(0);
+        b.push(v.charCodeAt(i));
     }
 
     return b;
@@ -5682,167 +4723,6 @@ encode.UTF16 = function(v) {
 
 sizeOf.UTF16 = function(v) {
     return v.length * 2;
-};
-
-// Data for converting old eight-bit Macintosh encodings to Unicode.
-// This representation is optimized for decoding; encoding is slower
-// and needs more memory. The assumption is that all opentype.js users
-// want to open fonts, but saving a font will be comperatively rare
-// so it can be more expensive. Keyed by IANA character set name.
-//
-// Python script for generating these strings:
-//
-//     s = u''.join([chr(c).decode('mac_greek') for c in range(128, 256)])
-//     print(s.encode('utf-8'))
-var eightBitMacEncodings = {
-    'x-mac-croatian':  // Python: 'mac_croatian'
-        'ÄÅÇÉÑÖÜáàâäãåçéèêëíìîïñóòôöõúùûü†°¢£§•¶ß®Š™´¨≠ŽØ∞±≤≥∆µ∂∑∏š∫ªºΩžø' +
-        '¿¡¬√ƒ≈Ć«Č… ÀÃÕŒœĐ—“”‘’÷◊©⁄€‹›Æ»–·‚„‰ÂćÁčÈÍÎÏÌÓÔđÒÚÛÙıˆ˜¯πË˚¸Êæˇ',
-    'x-mac-cyrillic':  // Python: 'mac_cyrillic'
-        'АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ†°Ґ£§•¶І®©™Ђђ≠Ѓѓ∞±≤≥іµґЈЄєЇїЉљЊњ' +
-        'јЅ¬√ƒ≈∆«»… ЋћЌќѕ–—“”‘’÷„ЎўЏџ№Ёёяабвгдежзийклмнопрстуфхцчшщъыьэю',
-    'x-mac-gaelic':
-        // http://unicode.org/Public/MAPPINGS/VENDORS/APPLE/GAELIC.TXT
-        'ÄÅÇÉÑÖÜáàâäãåçéèêëíìîïñóòôöõúùûü†°¢£§•¶ß®©™´¨≠ÆØḂ±≤≥ḃĊċḊḋḞḟĠġṀæø' +
-        'ṁṖṗɼƒſṠ«»… ÀÃÕŒœ–—“”‘’ṡẛÿŸṪ€‹›Ŷŷṫ·Ỳỳ⁊ÂÊÁËÈÍÎÏÌÓÔ♣ÒÚÛÙıÝýŴŵẄẅẀẁẂẃ',
-    'x-mac-greek':  // Python: 'mac_greek'
-        'Ä¹²É³ÖÜ΅àâä΄¨çéèêë£™îï•½‰ôö¦€ùûü†ΓΔΘΛΞΠß®©ΣΪ§≠°·Α±≤≥¥ΒΕΖΗΙΚΜΦΫΨΩ' +
-        'άΝ¬ΟΡ≈Τ«»… ΥΧΆΈœ–―“”‘’÷ΉΊΌΎέήίόΏύαβψδεφγηιξκλμνοπώρστθωςχυζϊϋΐΰ\u00AD',
-    'x-mac-icelandic':  // Python: 'mac_iceland'
-        'ÄÅÇÉÑÖÜáàâäãåçéèêëíìîïñóòôöõúùûüÝ°¢£§•¶ß®©™´¨≠ÆØ∞±≤≥¥µ∂∑∏π∫ªºΩæø' +
-        '¿¡¬√ƒ≈∆«»… ÀÃÕŒœ–—“”‘’÷◊ÿŸ⁄€ÐðÞþý·‚„‰ÂÊÁËÈÍÎÏÌÓÔÒÚÛÙıˆ˜¯˘˙˚¸˝˛ˇ',
-    'x-mac-inuit':
-        // http://unicode.org/Public/MAPPINGS/VENDORS/APPLE/INUIT.TXT
-        'ᐃᐄᐅᐆᐊᐋᐱᐲᐳᐴᐸᐹᑉᑎᑏᑐᑑᑕᑖᑦᑭᑮᑯᑰᑲᑳᒃᒋᒌᒍᒎᒐᒑ°ᒡᒥᒦ•¶ᒧ®©™ᒨᒪᒫᒻᓂᓃᓄᓅᓇᓈᓐᓯᓰᓱᓲᓴᓵᔅᓕᓖᓗ' +
-        'ᓘᓚᓛᓪᔨᔩᔪᔫᔭ… ᔮᔾᕕᕖᕗ–—“”‘’ᕘᕙᕚᕝᕆᕇᕈᕉᕋᕌᕐᕿᖀᖁᖂᖃᖄᖅᖏᖐᖑᖒᖓᖔᖕᙱᙲᙳᙴᙵᙶᖖᖠᖡᖢᖣᖤᖥᖦᕼŁł',
-    'x-mac-ce':  // Python: 'mac_latin2'
-        'ÄĀāÉĄÖÜáąČäčĆćéŹźĎíďĒēĖóėôöõúĚěü†°Ę£§•¶ß®©™ę¨≠ģĮįĪ≤≥īĶ∂∑łĻļĽľĹĺŅ' +
-        'ņŃ¬√ńŇ∆«»… ňŐÕőŌ–—“”‘’÷◊ōŔŕŘ‹›řŖŗŠ‚„šŚśÁŤťÍŽžŪÓÔūŮÚůŰűŲųÝýķŻŁżĢˇ',
-    macintosh:  // Python: 'mac_roman'
-        'ÄÅÇÉÑÖÜáàâäãåçéèêëíìîïñóòôöõúùûü†°¢£§•¶ß®©™´¨≠ÆØ∞±≤≥¥µ∂∑∏π∫ªºΩæø' +
-        '¿¡¬√ƒ≈∆«»… ÀÃÕŒœ–—“”‘’÷◊ÿŸ⁄€‹›ﬁﬂ‡·‚„‰ÂÊÁËÈÍÎÏÌÓÔÒÚÛÙıˆ˜¯˘˙˚¸˝˛ˇ',
-    'x-mac-romanian':  // Python: 'mac_romanian'
-        'ÄÅÇÉÑÖÜáàâäãåçéèêëíìîïñóòôöõúùûü†°¢£§•¶ß®©™´¨≠ĂȘ∞±≤≥¥µ∂∑∏π∫ªºΩăș' +
-        '¿¡¬√ƒ≈∆«»… ÀÃÕŒœ–—“”‘’÷◊ÿŸ⁄€‹›Țț‡·‚„‰ÂÊÁËÈÍÎÏÌÓÔÒÚÛÙıˆ˜¯˘˙˚¸˝˛ˇ',
-    'x-mac-turkish':  // Python: 'mac_turkish'
-        'ÄÅÇÉÑÖÜáàâäãåçéèêëíìîïñóòôöõúùûü†°¢£§•¶ß®©™´¨≠ÆØ∞±≤≥¥µ∂∑∏π∫ªºΩæø' +
-        '¿¡¬√ƒ≈∆«»… ÀÃÕŒœ–—“”‘’÷◊ÿŸĞğİıŞş‡·‚„‰ÂÊÁËÈÍÎÏÌÓÔÒÚÛÙˆ˜¯˘˙˚¸˝˛ˇ'
-};
-
-// Decodes an old-style Macintosh string. Returns either a Unicode JavaScript
-// string, or 'undefined' if the encoding is unsupported. For example, we do
-// not support Chinese, Japanese or Korean because these would need large
-// mapping tables.
-decode.MACSTRING = function(dataView, offset, dataLength, encoding) {
-    var table = eightBitMacEncodings[encoding];
-    if (table === undefined) {
-        return undefined;
-    }
-
-    var result = '';
-    for (var i = 0; i < dataLength; i++) {
-        var c = dataView.getUint8(offset + i);
-        // In all eight-bit Mac encodings, the characters 0x00..0x7F are
-        // mapped to U+0000..U+007F; we only need to look up the others.
-        if (c <= 0x7F) {
-            result += String.fromCharCode(c);
-        } else {
-            result += table[c & 0x7F];
-        }
-    }
-
-    return result;
-};
-
-// Helper function for encode.MACSTRING. Returns a dictionary for mapping
-// Unicode character codes to their 8-bit MacOS equivalent. This table
-// is not exactly a super cheap data structure, but we do not care because
-// encoding Macintosh strings is only rarely needed in typical applications.
-var macEncodingTableCache = typeof WeakMap === 'function' && new WeakMap();
-var macEncodingCacheKeys;
-var getMacEncodingTable = function(encoding) {
-    // Since we use encoding as a cache key for WeakMap, it has to be
-    // a String object and not a literal. And at least on NodeJS 2.10.1,
-    // WeakMap requires that the same String instance is passed for cache hits.
-    if (!macEncodingCacheKeys) {
-        macEncodingCacheKeys = {};
-        for (var e in eightBitMacEncodings) {
-            /*jshint -W053 */  // Suppress "Do not use String as a constructor."
-            macEncodingCacheKeys[e] = new String(e);
-        }
-    }
-
-    var cacheKey = macEncodingCacheKeys[encoding];
-    if (cacheKey === undefined) {
-        return undefined;
-    }
-
-    // We can't do "if (cache.has(key)) {return cache.get(key)}" here:
-    // since garbage collection may run at any time, it could also kick in
-    // between the calls to cache.has() and cache.get(). In that case,
-    // we would return 'undefined' even though we do support the encoding.
-    if (macEncodingTableCache) {
-        var cachedTable = macEncodingTableCache.get(cacheKey);
-        if (cachedTable !== undefined) {
-            return cachedTable;
-        }
-    }
-
-    var decodingTable = eightBitMacEncodings[encoding];
-    if (decodingTable === undefined) {
-        return undefined;
-    }
-
-    var encodingTable = {};
-    for (var i = 0; i < decodingTable.length; i++) {
-        encodingTable[decodingTable.charCodeAt(i)] = i + 0x80;
-    }
-
-    if (macEncodingTableCache) {
-        macEncodingTableCache.set(cacheKey, encodingTable);
-    }
-
-    return encodingTable;
-};
-
-// Encodes an old-style Macintosh string. Returns a byte array upon success.
-// If the requested encoding is unsupported, or if the input string contains
-// a character that cannot be expressed in the encoding, the function returns
-// 'undefined'.
-encode.MACSTRING = function(str, encoding) {
-    var table = getMacEncodingTable(encoding);
-    if (table === undefined) {
-        return undefined;
-    }
-
-    var result = [];
-    for (var i = 0; i < str.length; i++) {
-        var c = str.charCodeAt(i);
-
-        // In all eight-bit Mac encodings, the characters 0x00..0x7F are
-        // mapped to U+0000..U+007F; we only need to look up the others.
-        if (c >= 0x80) {
-            c = table[c];
-            if (c === undefined) {
-                // str contains a Unicode character that cannot be encoded
-                // in the requested encoding.
-                return undefined;
-            }
-        }
-
-        result.push(c);
-    }
-
-    return result;
-};
-
-sizeOf.MACSTRING = function(str, encoding) {
-    var b = encode.MACSTRING(str, encoding);
-    if (b !== undefined) {
-        return b.length;
-    } else {
-        return 0;
-    }
 };
 
 // Convert a list of values to a CFF INDEX structure.
@@ -5954,12 +4834,8 @@ sizeOf.OP = sizeOf.BYTE;
 var wmm = typeof WeakMap === 'function' && new WeakMap();
 // Convert a list of CharString operations to bytes.
 encode.CHARSTRING = function(ops) {
-    // See encode.MACSTRING for why we don't do "if (wmm && wmm.has(ops))".
-    if (wmm) {
-        var cachedValue = wmm.get(ops);
-        if (cachedValue !== undefined) {
-            return cachedValue;
-        }
+    if (wmm && wmm.has(ops)) {
+        return wmm.get(ops);
     }
 
     var d = [];
@@ -5990,12 +4866,6 @@ encode.OBJECT = function(v) {
     return encodingFunction(v.value);
 };
 
-sizeOf.OBJECT = function(v) {
-    var sizeOfFunction = sizeOf[v.type];
-    check.argument(sizeOfFunction !== undefined, 'No sizeOf function for type ' + v.type);
-    return sizeOfFunction(v.value);
-};
-
 // Convert a table object to bytes.
 // A table contains a list of fields containing the metadata (name, type and default value).
 // The table itself has the field values set as attributes.
@@ -6019,25 +4889,6 @@ encode.TABLE = function(table) {
     return d;
 };
 
-sizeOf.TABLE = function(table) {
-    var numBytes = 0;
-    var length = table.fields.length;
-
-    for (var i = 0; i < length; i += 1) {
-        var field = table.fields[i];
-        var sizeOfFunction = sizeOf[field.type];
-        check.argument(sizeOfFunction !== undefined, 'No sizeOf function for field type ' + field.type);
-        var value = table[field.name];
-        if (value === undefined) {
-            value = field.value;
-        }
-
-        numBytes += sizeOfFunction(value);
-    }
-
-    return numBytes;
-};
-
 // Merge in a list of bytes.
 encode.LITERAL = function(v) {
     return v;
@@ -6051,7 +4902,7 @@ exports.decode = decode;
 exports.encode = encode;
 exports.sizeOf = sizeOf;
 
-},{"./check":2}],29:[function(_dereq_,module,exports){
+},{"./check":2}],27:[function(_dereq_,module,exports){
 /*!
   * Reqwest! A general purpose XHR connection manager
   * license MIT (c) Dustin Diaz 2014
@@ -6401,7 +5252,7 @@ exports.sizeOf = sizeOf;
 
     function timedOut() {
       self._timedOut = true
-      self.request.abort()
+      self.request.abort()      
     }
 
     function error(resp, msg, t) {
@@ -6668,7 +5519,7 @@ exports.sizeOf = sizeOf;
   return reqwest
 });
 
-},{}],30:[function(_dereq_,module,exports){
+},{}],28:[function(_dereq_,module,exports){
 
 'use strict';
 
@@ -6747,7 +5598,7 @@ var _globalInit = function() {
     // then instantiate p5 in "global" mode
     if((window.setup && typeof window.setup === 'function') ||
       (window.draw && typeof window.draw === 'function')) {
-      p5.instance = new p5();
+      new p5();
     }
   }
 };
@@ -6760,8 +5611,7 @@ if (document.readyState === 'complete') {
 }
 
 module.exports = p5;
-
-},{"./color/creating_reading":32,"./color/p5.Color":33,"./color/setting":34,"./core/2d_primitives":35,"./core/attributes":36,"./core/constants":38,"./core/core":39,"./core/curves":40,"./core/environment":41,"./core/p5.Element":43,"./core/p5.Graphics":44,"./core/p5.Renderer2D":46,"./core/rendering":47,"./core/structure":49,"./core/transform":50,"./core/vertex":51,"./events/acceleration":52,"./events/keyboard":53,"./events/mouse":54,"./events/touch":55,"./image/image":57,"./image/loading_displaying":58,"./image/p5.Image":59,"./image/pixels":60,"./io/files":61,"./io/p5.Table":62,"./io/p5.TableRow":63,"./io/p5.XML":64,"./math/calculation":65,"./math/math":66,"./math/noise":67,"./math/p5.Vector":68,"./math/random":70,"./math/trigonometry":71,"./typography/attributes":72,"./typography/loading_displaying":73,"./typography/p5.Font":74,"./utilities/array_functions":75,"./utilities/conversion":76,"./utilities/string_functions":77,"./utilities/time_date":78,"./webgl/camera":79,"./webgl/interaction":80,"./webgl/light":81,"./webgl/loading":82,"./webgl/material":83,"./webgl/p5.Geometry":84,"./webgl/p5.Matrix":85,"./webgl/p5.RendererGL":88,"./webgl/p5.RendererGL.Immediate":86,"./webgl/p5.RendererGL.Retained":87,"./webgl/primitives":89,"./webgl/shader":90}],31:[function(_dereq_,module,exports){
+},{"./color/creating_reading":30,"./color/p5.Color":31,"./color/setting":32,"./core/2d_primitives":33,"./core/attributes":34,"./core/constants":36,"./core/core":37,"./core/curves":38,"./core/environment":39,"./core/p5.Element":41,"./core/p5.Graphics":42,"./core/p5.Renderer2D":44,"./core/rendering":45,"./core/structure":47,"./core/transform":48,"./core/vertex":49,"./events/acceleration":50,"./events/keyboard":51,"./events/mouse":52,"./events/touch":53,"./image/image":55,"./image/loading_displaying":56,"./image/p5.Image":57,"./image/pixels":58,"./io/files":59,"./io/p5.Table":60,"./io/p5.TableRow":61,"./io/p5.XML":62,"./math/calculation":63,"./math/math":64,"./math/noise":65,"./math/p5.Vector":66,"./math/random":68,"./math/trigonometry":69,"./typography/attributes":70,"./typography/loading_displaying":71,"./typography/p5.Font":72,"./utilities/array_functions":73,"./utilities/conversion":74,"./utilities/string_functions":75,"./utilities/time_date":76,"./webgl/camera":77,"./webgl/interaction":78,"./webgl/light":79,"./webgl/loading":80,"./webgl/material":81,"./webgl/p5.Geometry":82,"./webgl/p5.Matrix":83,"./webgl/p5.RendererGL":86,"./webgl/p5.RendererGL.Immediate":84,"./webgl/p5.RendererGL.Retained":85,"./webgl/primitives":87,"./webgl/shader":88}],29:[function(_dereq_,module,exports){
 /**
  * module Conversion
  * submodule Color Conversion
@@ -7014,7 +5864,7 @@ p5.ColorConversion._rgbaToHSLA = function(rgba) {
 
 module.exports = p5.ColorConversion;
 
-},{"../core/core":39}],32:[function(_dereq_,module,exports){
+},{"../core/core":37}],30:[function(_dereq_,module,exports){
 /**
  * @module Color
  * @submodule Creating & Reading
@@ -7129,7 +5979,6 @@ p5.prototype.brightness = function(c) {
  * @param  {Number|String} gray    number specifying value between white
  *                                 and black.
  * @param  {Number}        [alpha] alpha value relative to current color range
- *                                 (default is 0-100)
  * @return {Array}                 resulting color
  *
  * @example
@@ -7480,7 +6329,7 @@ p5.prototype.lightness = function(c) {
  * var c = color(127, 255, 0);
  * colorMode(RGB, 1);
  * var myColor = red(c);
- * println(myColor);
+ * print(myColor);
  * </code>
  * </div>
  */
@@ -7526,7 +6375,7 @@ p5.prototype.saturation = function(c) {
 
 module.exports = p5;
 
-},{"../core/constants":38,"../core/core":39,"./p5.Color":33}],33:[function(_dereq_,module,exports){
+},{"../core/constants":36,"../core/core":37,"./p5.Color":31}],31:[function(_dereq_,module,exports){
 /**
  * @module Color
  * @submodule Creating & Reading
@@ -8128,7 +6977,7 @@ p5.Color._parseInputs = function() {
 
 module.exports = p5.Color;
 
-},{"../core/constants":38,"../core/core":39,"./color_conversion":31}],34:[function(_dereq_,module,exports){
+},{"../core/constants":36,"../core/core":37,"./color_conversion":29}],32:[function(_dereq_,module,exports){
 /**
  * @module Color
  * @submodule Setting
@@ -8152,8 +7001,7 @@ _dereq_('./p5.Color');
  *
  * @method background
  * @param {p5.Color} color     any value created by the color() function
- * @param {Number} [a]         opacity of the background relative to current
- *                             color range (default is 0-100)
+ * @param {Number} [a]         opacity of the background
  *
  * @example
  * <div>
@@ -8257,7 +7105,7 @@ _dereq_('./p5.Color');
  *                        color mode)
  * @param {Number} v3     blue or brightness value (depending on the current
  *                        color mode)
- * @param  {Number} [a]
+ * @param {Number} [a]
  */
 
 /**
@@ -8265,7 +7113,7 @@ _dereq_('./p5.Color');
  * @param {p5.Image} image     image created with loadImage() or createImage(),
  *                             to set as background
  *                             (must be same size as the sketch window)
- * @param  {Number}  [a]
+ * @param {Number} [a]
  */
 p5.prototype.background = function() {
   if (arguments[0] instanceof p5.Image) {
@@ -8320,16 +7168,16 @@ p5.prototype.clear = function() {
  * so you can change modes as you like without affecting their appearance.
  *
  * @method colorMode
- * @param {Constant} mode   either RGB or HSB, corresponding to
- *                          Red/Green/Blue and Hue/Saturation/Brightness
- *                          (or Lightness)
- * @param {Number} [max1] range for the red or hue depending on the
- *                              current color mode, or range for all values
- * @param {Number} [max2] range for the green or saturation depending
- *                              on the current color mode
- * @param {Number} [max3] range for the blue or brightness/lighntess
- *                              depending on the current color mode
- * @param {Number} [maxA] range for the alpha
+ * @param {Number|Constant} mode   either RGB or HSB, corresponding to
+ *                                 Red/Green/Blue and Hue/Saturation/Brightness
+ *                                 (or Lightness)
+ * @param {Number|Constant} [max1] range for the red or hue depending on the
+ *                                 current color mode, or range for all values
+ * @param {Number|Constant} [max2] range for the green or saturation depending
+ *                                 on the current color mode
+ * @param {Number|Constant} [max3] range for the blue or brightness/lighntess
+ *                                 depending on the current color mode
+ * @param {Number|Constant} [maxA] range for the alpha
  * @example
  * <div>
  * <code>
@@ -8702,7 +7550,7 @@ p5.prototype.stroke = function() {
 
 module.exports = p5;
 
-},{"../core/constants":38,"../core/core":39,"./p5.Color":33}],35:[function(_dereq_,module,exports){
+},{"../core/constants":36,"../core/core":37,"./p5.Color":31}],33:[function(_dereq_,module,exports){
 /**
  * @module Shape
  * @submodule 2D Primitives
@@ -8715,7 +7563,7 @@ module.exports = p5;
 
 var p5 = _dereq_('./core');
 var constants = _dereq_('./constants');
-var canvas = _dereq_('./canvas');
+
 _dereq_('./error_helpers');
 
 /**
@@ -8736,7 +7584,7 @@ _dereq_('./error_helpers');
  * @param  {Number} d      height of the arc's ellipse by default
  * @param  {Number} start  angle to start the arc, specified in radians
  * @param  {Number} stop   angle to stop the arc, specified in radians
- * @param  {Constant} [mode] optional parameter to determine the way of drawing
+ * @param  {String} [mode] optional parameter to determine the way of drawing
  *                         the arc
  * @return {Object}        the p5 object
  * @example
@@ -8849,6 +7697,7 @@ p5.prototype.arc = function(x, y, w, h, start, stop, mode) {
  * @method ellipse
  * @param {Number} x
  * @param {Number} y
+ * @param {Number} z z-coordinate of the ellipse
  * @param {Number} w
  * @param {Number} [h]
  * @return {p5}
@@ -8858,27 +7707,30 @@ p5.prototype.ellipse = function() {
   for (var i = 0; i < args.length; ++i) {
     args[i] = arguments[i];
   }
-  // Duplicate 3rd argument if only 3 given.
+  // Duplicate 3rd argument if onl 3 given.
   if (args.length === 3) {
     args.push(args[2]);
   }
-  // p5 supports negative width and heights for rects
-  if (args[2] < 0){args[2] = Math.abs(args[2]);}
-  if (args[3] < 0){args[3] = Math.abs(args[3]);}
+  if(this._renderer.isP3D){
+    // p5 supports negative width and heights for ellipses
+    if (args[3] < 0){args[3] = Math.abs(args[3]);}
+    if (args[4] < 0){args[4] = Math.abs(args[4]);}
+  } else {
+    // p5 supports negative width and heights for rects
+    if (args[2] < 0){args[2] = Math.abs(args[2]);}
+    if (args[3] < 0){args[3] = Math.abs(args[3]);}
+  }
   if (!this._renderer._doStroke && !this._renderer._doFill) {
     return this;
   }
-  var vals = canvas.modeAdjust(
-    args[0],
-    args[1],
-    args[2],
-    args[3],
-    this._renderer._ellipseMode);
-  args[0] = vals.x;
-  args[1] = vals.y;
-  args[2] = vals.w;
-  args[3] = vals.h;
-  this._renderer.ellipse(args);
+  if (this._renderer.isP3D){
+    this._renderer.ellipse(args);
+  } else {
+    this._renderer.ellipse(args[0],//x
+      args[1],//y
+      args[2],//width
+      args[3]);//height
+  }
   return this;
 };
 /**
@@ -9022,12 +7874,16 @@ p5.prototype.point = function() {
  * @method quad
  * @param {Number} x1
  * @param {Number} y1
+ * @param {Number} z1 the z-coordinate of the first point
  * @param {Number} x2
  * @param {Number} y2
+ * @param {Number} z2 the z-coordinate of the second point
  * @param {Number} x3
  * @param {Number} y3
+ * @param {Number} z3 the z-coordinate of the third point
  * @param {Number} x4
  * @param {Number} y4
+ * @param {Number} z4 the z-coordinate of the fourth point
  * @return {p5} the p5 object
  */
 p5.prototype.quad = function() {
@@ -9117,10 +7973,13 @@ p5.prototype.quad = function() {
 * @method rect
 * @param  {Number} x
 * @param  {Number} y
+* @param  {Number} z  z-coordinate of the rectangle.
 * @param  {Number} w
 * @param  {Number} h
-* @param  {Number} [detailX]
-* @param  {Number} [detailY]
+* @param  {Number} [tl]
+* @param  {Number} [tr]
+* @param  {Number} [br]
+* @param  {Number} [bl]
 * @return {p5}          the p5 object.
 */
 p5.prototype.rect = function () {
@@ -9128,7 +7987,11 @@ p5.prototype.rect = function () {
   for (var i = 0; i < args.length; ++i) {
     args[i] = arguments[i];
   }
-  if (this._renderer._rectMode !== constants.CORNERS) {
+  if(this._renderer.isP3D){
+    // p5 supports negative width and heights for rects
+    if (args[3] < 0){args[3] = Math.abs(args[3]);}
+    if (args[4] < 0){args[4] = Math.abs(args[4]);}
+  } else if (this._renderer._rectMode !== constants.CORNERS) {
     // p5 supports negative width and heights for rects
     if (args[2] < 0){args[2] = Math.abs(args[2]);}
     if (args[3] < 0){args[3] = Math.abs(args[3]);}
@@ -9136,16 +7999,6 @@ p5.prototype.rect = function () {
   if (!this._renderer._doStroke && !this._renderer._doFill) {
     return;
   }
-  var vals = canvas.modeAdjust(
-    args[0],
-    args[1],
-    args[2],
-    args[3],
-    this._renderer._rectMode);
-  args[0] = vals.x;
-  args[1] = vals.y;
-  args[2] = vals.w;
-  args[3] = vals.h;
   this._renderer.rect(args);
   return this;
 };
@@ -9179,13 +8032,24 @@ p5.prototype.triangle = function() {
   for (var i = 0; i < args.length; ++i) {
     args[i] = arguments[i];
   }
-  this._renderer.triangle(args);
+  if(this._renderer.isP3D){
+    this._renderer.triangle(args);
+  } else {
+    this._renderer.triangle(
+      args[0],
+      args[1],
+      args[2],
+      args[3],
+      args[4],
+      args[5]
+    );
+  }
   return this;
 };
 
 module.exports = p5;
 
-},{"./canvas":37,"./constants":38,"./core":39,"./error_helpers":42}],36:[function(_dereq_,module,exports){
+},{"./constants":36,"./core":37,"./error_helpers":40}],34:[function(_dereq_,module,exports){
 /**
  * @module Shape
  * @submodule Attributes
@@ -9223,7 +8087,7 @@ var constants = _dereq_('./constants');
  * case-sensitive language.
  *
  * @method ellipseMode
- * @param  {Constant} mode either CENTER, RADIUS, CORNER, or CORNERS
+ * @param  {Number/Constant} mode either CENTER, RADIUS, CORNER, or CORNERS
  * @return {p5}                   the p5 object
  * @example
  * <div>
@@ -9308,7 +8172,7 @@ p5.prototype.noSmooth = function() {
  * case-sensitive language.
  *
  * @method rectMode
- * @param  {Constant} mode either CORNER, CORNERS, CENTER, or RADIUS
+ * @param  {Number/Constant} mode either CORNER, CORNERS, CENTER, or RADIUS
  * @return {p5}                   the p5 object
  * @example
  * <div>
@@ -9484,7 +8348,7 @@ p5.prototype.strokeWeight = function(w) {
 
 module.exports = p5;
 
-},{"./constants":38,"./core":39}],37:[function(_dereq_,module,exports){
+},{"./constants":36,"./core":37}],35:[function(_dereq_,module,exports){
 /**
  * @requires constants
  */
@@ -9520,7 +8384,7 @@ module.exports = {
 };
 
 
-},{"./constants":38}],38:[function(_dereq_,module,exports){
+},{"./constants":36}],36:[function(_dereq_,module,exports){
 /**
  * @module Constants
  * @submodule Constants
@@ -9725,7 +8589,7 @@ module.exports = {
 
 };
 
-},{}],39:[function(_dereq_,module,exports){
+},{}],37:[function(_dereq_,module,exports){
 /**
  * @module Structure
  * @submodule Structure
@@ -9757,8 +8621,8 @@ var constants = _dereq_('./constants');
  * @param  {Function}    sketch a closure that can set optional preload(),
  *                              setup(), and/or draw() properties on the
  *                              given p5 instance
- * @param  {HTMLElement|boolean} [node] element to attach canvas to, if a
- *                                      boolean is passed in use it as sync
+ * @param  {HTMLElement|boolean} node element to attach canvas to, if a
+ *                                    boolean is passed in use it as sync
  * @param  {boolean}     [sync] start synchronously (optional)
  * @return {p5}                 a p5 instance
  */
@@ -10192,13 +9056,7 @@ var p5 = function(sketch, node, sync) {
       if(typeof p5.prototype[p] === 'function') {
         var ev = p.substring(2);
         if (!this._events.hasOwnProperty(ev)) {
-          if (Math.hasOwnProperty(p) && (Math[p] === p5.prototype[p])) {
-            // Multiple p5 methods are just native Math functions. These can be
-            // called without any binding.
-            friendlyBindGlobal(p, p5.prototype[p]);
-          } else {
-            friendlyBindGlobal(p, p5.prototype[p].bind(this));
-          }
+          friendlyBindGlobal(p, p5.prototype[p].bind(this));
         }
       } else {
         friendlyBindGlobal(p, p5.prototype[p]);
@@ -10252,10 +9110,6 @@ var p5 = function(sketch, node, sync) {
   }
 };
 
-// Allows for the friendly error system to be turned off when creating a sketch,
-// which can give a significant boost to performance when needed.
-p5.disableFriendlyErrors = false;
-
 // attach constants to p5 prototype
 for (var k in constants) {
   p5.prototype[k] = constants[k];
@@ -10306,8 +9160,7 @@ p5.prototype._createFriendlyGlobalFunctionBinder = function(options) {
   };
 
   return function(prop, value) {
-    if (!p5.disableFriendlyErrors &&
-        typeof(IS_MINIFIED) === 'undefined' &&
+    if (typeof(IS_MINIFIED) === 'undefined' &&
         typeof(value) === 'function' &&
         !(prop in p5.prototype._preloadMethods)) {
       try {
@@ -10366,7 +9219,7 @@ p5.prototype._createFriendlyGlobalFunctionBinder = function(options) {
 
 module.exports = p5;
 
-},{"./constants":38,"./shim":48}],40:[function(_dereq_,module,exports){
+},{"./constants":36,"./shim":46}],38:[function(_dereq_,module,exports){
 /**
  * @module Shape
  * @submodule Curves
@@ -10861,7 +9714,7 @@ p5.prototype.curveTangent = function(a, b,c, d, t) {
 
 module.exports = p5;
 
-},{"./core":39,"./error_helpers":42}],41:[function(_dereq_,module,exports){
+},{"./core":37,"./error_helpers":40}],39:[function(_dereq_,module,exports){
 /**
  * @module Environment
  * @submodule Environment
@@ -10884,24 +9737,24 @@ p5.prototype._targetFrameRate = 60;
 
 if (window.console && console.log) {
   /**
-   * The println() function writes to the console area of your browser.
+   * The print() function writes to the console area of your browser.
    * This function is often helpful for looking at the data a program is
    * producing. This function creates a new line of text for each call to
    * the function. Individual elements can be
    * separated with quotes ("") and joined with the addition operator (+).
    * <br><br>
-   * While println() is similar to console.log(), it does not directly map to
+   * While print() is similar to console.log(), it does not directly map to
    * it in order to simulate easier to understand behavior than
    * console.log(). Due to this, it is slower. For fastest results, use
    * console.log().
    *
-   * @method println
+   * @method print
    * @param {Any} contents any combination of Number, String, Object, Boolean,
    *                       Array to print
    * @example
    * <div><code class='norender'>
    * var x = 10;
-   * println("The value of x is " + x);
+   * print("The value of x is " + x);
    * // prints "The value of x is 10"
    * </code></div>
    */
@@ -10909,22 +9762,19 @@ if (window.console && console.log) {
   // simulate synchronous behavior. This is a hack and is gross.
   // Since this will not work on all objects, particularly circular
   // structures, simply console.log() on error.
-  p5.prototype.println = function(args) {
+  p5.prototype.print = function(args) {
     try {
-      if (arguments.length > 1) {
-        console.log.apply(console, arguments);
-      } else {
-        var newArgs = JSON.parse(JSON.stringify(args));
-        console.log(newArgs);
-      }
+      var newArgs = JSON.parse(JSON.stringify(args));
+      console.log(newArgs);
     } catch(err) {
       console.log(args);
     }
   };
 } else {
-  p5.prototype.println = function() {};
+  p5.prototype.print = function() {};
 }
 
+p5.prototype.println = p5.prototype.print;
 
 /**
  * The system variable frameCount contains the number of frames that have
@@ -11169,7 +10019,7 @@ p5.prototype.displayHeight = screen.height;
  * createCanvas(windowWidth, windowHeight);
  * </code></div>
  */
-p5.prototype.windowWidth = getWindowWidth();
+p5.prototype.windowWidth = document.documentElement.clientWidth;
 /**
  * System variable that stores the height of the inner window, it maps to
  * window.innerHeight.
@@ -11180,7 +10030,7 @@ p5.prototype.windowWidth = getWindowWidth();
  * createCanvas(windowWidth, windowHeight);
  * </code></div>
  */
-p5.prototype.windowHeight = getWindowHeight();
+p5.prototype.windowHeight = document.documentElement.clientHeight;
 
 /**
  * The windowResized() function is called once every time the browser window
@@ -11204,8 +10054,8 @@ p5.prototype.windowHeight = getWindowHeight();
  * </code></div>
  */
 p5.prototype._onresize = function(e){
-  this._setProperty('windowWidth', getWindowWidth());
-  this._setProperty('windowHeight', getWindowHeight());
+  this._setProperty('windowWidth', window.innerWidth);
+  this._setProperty('windowHeight', window.innerHeight);
   var context = this._isGlobal ? window : this;
   var executeDefault;
   if (typeof context.windowResized === 'function') {
@@ -11215,17 +10065,6 @@ p5.prototype._onresize = function(e){
     }
   }
 };
-
-function getWindowWidth() {
-  return Math.max(
-    document.documentElement.clientWidth,
-    window.innerWidth || 0);
-}
-function getWindowHeight() {
-  return Math.max(
-    document.documentElement.clientHeight,
-    window.innerHeight || 0);
-}
 
 /**
  * System variable that stores the width of the drawing canvas. This value
@@ -11464,7 +10303,7 @@ p5.prototype.getURLParams = function() {
 
 module.exports = p5;
 
-},{"./constants":38,"./core":39}],42:[function(_dereq_,module,exports){
+},{"./constants":36,"./core":37}],40:[function(_dereq_,module,exports){
 /**
  * @for p5
  * @requires core
@@ -11851,7 +10690,7 @@ if (document.readyState !== 'complete') {
 
 module.exports = p5;
 
-},{"./constants":38,"./core":39}],43:[function(_dereq_,module,exports){
+},{"./constants":36,"./core":37}],41:[function(_dereq_,module,exports){
 /**
  * @module DOM
  * @submodule DOM
@@ -11864,8 +10703,7 @@ var p5 = _dereq_('./core');
  * Base class for all elements added to a sketch, including canvas,
  * graphics buffers, and other HTML elements. Methods in blue are
  * included in the core functionality, methods in brown are added
- * with the <a href="http://p5js.org/reference/#/libraries/p5.dom">p5.dom
- * library</a>.
+ * with the <a href="http://p5js.org/libraries/">p5.dom library</a>.
  * It is not called directly, but p5.Element
  * objects are created by calling createCanvas, createGraphics,
  * or in the p5.dom library, createDiv, createImg, createInput, etc.
@@ -11945,21 +10783,11 @@ p5.Element.prototype.parent = function(p) {
 
 /**
  *
- * Sets the ID of the element. If no ID argument is passed in, it instead
- * returns the current ID of the element.
+ * Sets the ID of the element
  *
  * @method id
- * @param  {String} [id] ID of the element
- * @return {p5.Element|String}
- * @example
- * <div><code class='norender'>
- * function setup() {
- *   var cnv = createCanvas(100, 100);
- *   // Assigns a CSS selector ID to
- *   // the canvas element.
- *   cnv.id("mycanvas");
- * }
- * </code></div>
+ * @param  {String} id ID of the element
+ * @return {p5.Element}
  */
 p5.Element.prototype.id = function(id) {
   if (arguments.length === 0) {
@@ -11974,12 +10802,11 @@ p5.Element.prototype.id = function(id) {
 
 /**
  *
- * Adds given class to the element. If no class argument is passed in, it
- * instead returns a string containing the current class(es) of the element.
+ * Adds given class to the element
  *
  * @method class
- * @param  {String} [class] class to add
- * @return {p5.Element|String}
+ * @param  {String} class class to add
+ * @return {p5.Element}
  */
 p5.Element.prototype.class = function(c) {
   if (arguments.length === 0) {
@@ -12673,7 +11500,7 @@ p5.Element.prototype._setProperty = function (prop, value) {
 
 module.exports = p5.Element;
 
-},{"./core":39}],44:[function(_dereq_,module,exports){
+},{"./core":37}],42:[function(_dereq_,module,exports){
 /**
  * @module Rendering
  * @submodule Rendering
@@ -12740,7 +11567,7 @@ p5.Graphics.prototype = Object.create(p5.Element.prototype);
 
 module.exports = p5.Graphics;
 
-},{"./constants":38,"./core":39}],45:[function(_dereq_,module,exports){
+},{"./constants":36,"./core":37}],43:[function(_dereq_,module,exports){
 /**
  * @module Rendering
  * @submodule Rendering
@@ -12962,7 +11789,7 @@ function calculateOffset(object) {
 
 module.exports = p5.Renderer;
 
-},{"../core/constants":38,"./core":39}],46:[function(_dereq_,module,exports){
+},{"../core/constants":36,"./core":37}],44:[function(_dereq_,module,exports){
 
 var p5 = _dereq_('./core');
 var canvas = _dereq_('./canvas');
@@ -13153,9 +11980,6 @@ p5.Renderer2D.prototype.copy = function () {
 
 p5.Renderer2D._copyHelper =
 function (srcImage, sx, sy, sw, sh, dx, dy, dw, dh) {
-  if (!srcImage.canvas) {
-    srcImage.loadPixels();
-  }
   var s = srcImage.canvas.width / srcImage.width;
   this.drawingContext.drawImage(srcImage.canvas,
     s * sx, s * sy, s * sw, s * sh, dx, dy, dw, dh);
@@ -13181,23 +12005,23 @@ p5.Renderer2D.prototype.get = function(x, y, w, h) {
   var ctx = this._pInst || this;
 
   var pd = ctx._pixelDensity;
+  ctx.loadPixels();
 
   // round down to get integer numbers
   x = Math.floor(x);
   y = Math.floor(y);
 
-  var sx = x * pd;
-  var sy = y * pd;
   if (w === 1 && h === 1){
-    var imageData = this.drawingContext.getImageData(sx, sy, 1, 1).data;
-    //imageData = [0,0,0,0];
+    var startPoint = pd*pd*4*(y*this.width+x);
     return [
-      imageData[0],
-      imageData[1],
-      imageData[2],
-      imageData[3]
+      ctx.pixels[startPoint],
+      ctx.pixels[startPoint+1],
+      ctx.pixels[startPoint+2],
+      ctx.pixels[startPoint+3]
     ];
   } else {
+    var sx = x * pd;
+    var sy = y * pd;
     //auto constrain the width and height to
     //dimensions of the source image
     var dw = Math.min(w, ctx.width);
@@ -13408,13 +12232,9 @@ p5.Renderer2D.prototype.arc =
   return this;
 };
 
-p5.Renderer2D.prototype.ellipse = function(args) {
+p5.Renderer2D.prototype.ellipse = function(x, y, w, h) {
   var ctx = this.drawingContext;
   var doFill = this._doFill, doStroke = this._doStroke;
-  var x = args[0],
-    y = args[1],
-    w = args[2],
-    h = args[3];
   if (doFill && !doStroke) {
     if(ctx.fillStyle === styleEmpty) {
       return this;
@@ -13424,19 +12244,20 @@ p5.Renderer2D.prototype.ellipse = function(args) {
       return this;
     }
   }
+  var vals = canvas.modeAdjust(x, y, w, h, this._ellipseMode);
   var kappa = 0.5522847498,
-    ox = (w / 2) * kappa, // control point offset horizontal
-    oy = (h / 2) * kappa, // control point offset vertical
-    xe = x + w,      // x-end
-    ye = y + h,      // y-end
-    xm = x + w / 2,  // x-middle
-    ym = y + h / 2;  // y-middle
+    ox = (vals.w / 2) * kappa, // control point offset horizontal
+    oy = (vals.h / 2) * kappa, // control point offset vertical
+    xe = vals.x + vals.w,      // x-end
+    ye = vals.y + vals.h,      // y-end
+    xm = vals.x + vals.w / 2,  // x-middle
+    ym = vals.y + vals.h / 2;  // y-middle
   ctx.beginPath();
-  ctx.moveTo(x, ym);
-  ctx.bezierCurveTo(x, ym - oy, xm - ox, y, xm, y);
-  ctx.bezierCurveTo(xm + ox, y, xe, ym - oy, xe, ym);
+  ctx.moveTo(vals.x, ym);
+  ctx.bezierCurveTo(vals.x, ym - oy, xm - ox, vals.y, xm, vals.y);
+  ctx.bezierCurveTo(xm + ox, vals.y, xe, ym - oy, xe, ym);
   ctx.bezierCurveTo(xe, ym + oy, xm + ox, ye, xm, ye);
-  ctx.bezierCurveTo(xm - ox, ye, x, ym + oy, x, ym);
+  ctx.bezierCurveTo(xm - ox, ye, vals.x, ym + oy, vals.x, ym);
   ctx.closePath();
   if (doFill) {
     ctx.fill();
@@ -13544,6 +12365,7 @@ p5.Renderer2D.prototype.rect = function(args) {
       return this;
     }
   }
+  var vals = canvas.modeAdjust(x, y, w, h, this._rectMode);
   // Translate the line by (0.5, 0.5) to draw a crisp rectangle border
   if (this._doStroke && ctx.lineWidth % 2 === 1) {
     ctx.translate(0.5, 0.5);
@@ -13552,7 +12374,7 @@ p5.Renderer2D.prototype.rect = function(args) {
 
   if (typeof tl === 'undefined') {
     // No rounded corners
-    ctx.rect(x, y, w, h);
+    ctx.rect(vals.x, vals.y, vals.w, vals.h);
   } else {
     // At least one rounded corner
     // Set defaults when not specified
@@ -13560,26 +12382,31 @@ p5.Renderer2D.prototype.rect = function(args) {
     if (typeof br === 'undefined') { br = tr; }
     if (typeof bl === 'undefined') { bl = br; }
 
-    var hw = w / 2;
-    var hh = h / 2;
+    // Cache and compute several values
+    var _x = vals.x;
+    var _y = vals.y;
+    var _w = vals.w;
+    var _h = vals.h;
+    var hw = _w / 2;
+    var hh = _h / 2;
 
     // Clip radii
-    if (w < 2 * tl) { tl = hw; }
-    if (h < 2 * tl) { tl = hh; }
-    if (w < 2 * tr) { tr = hw; }
-    if (h < 2 * tr) { tr = hh; }
-    if (w < 2 * br) { br = hw; }
-    if (h < 2 * br) { br = hh; }
-    if (w < 2 * bl) { bl = hw; }
-    if (h < 2 * bl) { bl = hh; }
+    if (_w < 2 * tl) { tl = hw; }
+    if (_h < 2 * tl) { tl = hh; }
+    if (_w < 2 * tr) { tr = hw; }
+    if (_h < 2 * tr) { tr = hh; }
+    if (_w < 2 * br) { br = hw; }
+    if (_h < 2 * br) { br = hh; }
+    if (_w < 2 * bl) { bl = hw; }
+    if (_h < 2 * bl) { bl = hh; }
 
     // Draw shape
     ctx.beginPath();
-    ctx.moveTo(x + tl, y);
-    ctx.arcTo(x + w, y, x + w, y + h, tr);
-    ctx.arcTo(x + w, y + h, x, y + h, br);
-    ctx.arcTo(x, y + h, x, y, bl);
-    ctx.arcTo(x, y, x + w, y, tl);
+    ctx.moveTo(_x + tl, _y);
+    ctx.arcTo(_x + _w, _y, _x + _w, _y + _h, tr);
+    ctx.arcTo(_x + _w, _y + _h, _x, _y + _h, br);
+    ctx.arcTo(_x, _y + _h, _x, _y, bl);
+    ctx.arcTo(_x, _y, _x + _w, _y, tl);
     ctx.closePath();
   }
   if (this._doFill) {
@@ -13594,12 +12421,9 @@ p5.Renderer2D.prototype.rect = function(args) {
   return this;
 };
 
-p5.Renderer2D.prototype.triangle = function(args) {
+p5.Renderer2D.prototype.triangle = function(x1, y1, x2, y2, x3, y3) {
   var ctx = this.drawingContext;
   var doFill = this._doFill, doStroke = this._doStroke;
-  var x1=args[0], y1=args[1];
-  var x2=args[2], y2=args[3];
-  var x3=args[4], y3=args[5];
   if (doFill && !doStroke) {
     if(ctx.fillStyle === styleEmpty) {
       return this;
@@ -14253,8 +13077,7 @@ p5.Renderer2D.prototype.pop = function() {
 };
 
 module.exports = p5.Renderer2D;
-
-},{"../image/filters":56,"./canvas":37,"./constants":38,"./core":39,"./p5.Renderer":45}],47:[function(_dereq_,module,exports){
+},{"../image/filters":54,"./canvas":35,"./constants":36,"./core":37,"./p5.Renderer":43}],45:[function(_dereq_,module,exports){
 /**
  * @module Rendering
  * @submodule Rendering
@@ -14286,7 +13109,7 @@ var defaultId = 'defaultCanvas0'; // this gets set again in createCanvas
  * @method createCanvas
  * @param  {Number} w width of the canvas
  * @param  {Number} h height of the canvas
- * @param  {Constant} [renderer] P2D or WEBGL
+ * @param  {String} [renderer] 'p2d' | 'webgl'
  * @return {Object} canvas generated
  * @example
  * <div>
@@ -14439,7 +13262,7 @@ p5.prototype.noCanvas = function() {
  * @method createGraphics
  * @param  {Number} w width of the offscreen graphics buffer
  * @param  {Number} h height of the offscreen graphics buffer
- * @param  {Constant} [renderer] P2D or WEBGL
+ * @param {String} renderer either 'p2d' or 'webgl'.
  * undefined defaults to p2d
  * @return {Object} offscreen graphics buffer
  * @example
@@ -14500,7 +13323,7 @@ p5.prototype.createGraphics = function(w, h, renderer){
  * </ul>
  *
  * @method blendMode
- * @param  {Constant} mode blend mode to set for canvas
+ * @param  {String/Constant} mode blend mode to set for canvas
  * @example
  * <div>
  * <code>
@@ -14540,7 +13363,7 @@ p5.prototype.blendMode = function(mode) {
 
 module.exports = p5;
 
-},{"../webgl/p5.RendererGL":88,"./constants":38,"./core":39,"./p5.Graphics":44,"./p5.Renderer2D":46}],48:[function(_dereq_,module,exports){
+},{"../webgl/p5.RendererGL":86,"./constants":36,"./core":37,"./p5.Graphics":42,"./p5.Renderer2D":44}],46:[function(_dereq_,module,exports){
 
 // requestAnim shim layer by Paul Irish
 window.requestAnimationFrame = (function(){
@@ -14623,7 +13446,7 @@ window.performance.now = (function(){
   }
 }());
 
-},{}],49:[function(_dereq_,module,exports){
+},{}],47:[function(_dereq_,module,exports){
 /**
  * @module Structure
  * @submodule Structure
@@ -14883,62 +13706,29 @@ p5.prototype.popStyle = function() {
  * <br><br>
  * The redraw() function does not work properly when called inside draw().
  * To enable/disable animations, use loop() and noLoop().
- * <br><br>
- * In addition you can set the number of redraws per method call. Just
- * add an integer as single parameter for the number of redraws.
  *
  * @method redraw
- * @param  {Integer} [n] Redraw for n-times. The default value is 1.
  * @example
- * <div><code>
- * var x = 0;
+ *   <div><code>
+ *     var x = 0;
  *
- * function setup() {
- *   createCanvas(100, 100);
- *   noLoop();
- * }
+ *     function setup() {
+ *       createCanvas(100, 100);
+ *       noLoop();
+ *     }
  *
- * function draw() {
- *   background(204);
- *   line(x, 0, x, height);
- * }
+ *     function draw() {
+ *       background(204);
+ *       line(x, 0, x, height);
+ *     }
  *
- * function mousePressed() {
- *   x += 1;
- *   redraw();
- * }
- * </code></div>
- *
- * <div><code>
- * var x = 0;
- *
- * function setup() {
- *   createCanvas(100, 100);
- *   noLoop();
- * }
- *
- * function draw() {
- *   background(204);
- *   x += 1;
- *   line(x, 0, x, height);
- * }
- *
- * function mousePressed() {
- *   redraw(5);
- * }
- * </code></div>
+ *     function mousePressed() {
+ *       x += 1;
+ *       redraw();
+ *     }
+ *   </code></div>
  */
 p5.prototype.redraw = function () {
-  var numberOfRedraws = 1;
-  if (arguments.length === 1) {
-    try {
-      if (parseInt(arguments[0]) > 1) {
-        numberOfRedraws = parseInt(arguments[0]);
-      }
-    } catch (error) {
-      // Do nothing, because the default value didn't be changed.
-    }
-  }
   var userSetup = this.setup || window.setup;
   var userDraw = this.draw || window.draw;
   if (typeof userDraw === 'function') {
@@ -14946,14 +13736,13 @@ p5.prototype.redraw = function () {
       this.scale(this._pixelDensity, this._pixelDensity);
     }
     var self = this;
-    var callMethod = function (f) {
+    this._registeredMethods.pre.forEach(function (f) {
       f.call(self);
-    };
-    for (var idxRedraw = 0; idxRedraw < numberOfRedraws; idxRedraw++) {
-      this._registeredMethods.pre.forEach(callMethod);
-      userDraw();
-      this._registeredMethods.post.forEach(callMethod);
-    }
+    });
+    userDraw();
+    this._registeredMethods.post.forEach(function (f) {
+      f.call(self);
+    });
   }
 };
 
@@ -14966,7 +13755,7 @@ p5.prototype.size = function() {
 
 module.exports = p5;
 
-},{"./core":39}],50:[function(_dereq_,module,exports){
+},{"./core":37}],48:[function(_dereq_,module,exports){
 /**
  * @module Transform
  * @submodule Transform
@@ -15386,7 +14175,7 @@ p5.prototype.translate = function(x, y, z) {
 
 module.exports = p5;
 
-},{"./constants":38,"./core":39}],51:[function(_dereq_,module,exports){
+},{"./constants":36,"./core":37}],49:[function(_dereq_,module,exports){
 /**
  * @module Shape
  * @submodule Vertex
@@ -15470,8 +14259,9 @@ p5.prototype.beginContour = function() {
  * ellipse() or rect() within beginShape().
  *
  * @method beginShape
- * @param  {Constant} kind either POINTS, LINES, TRIANGLES, TRIANGLE_FAN
- *                                TRIANGLE_STRIP, QUADS, or QUAD_STRIP
+ * @param  {Number/Constant} kind either POINTS, LINES, TRIANGLES,
+ *                                TRIANGLE_FAN, TRIANGLE_STRIP, QUADS,
+ *                                or QUAD_STRIP
  * @return {Object}               the p5 object
  * @example
  * <div>
@@ -15798,7 +14588,7 @@ p5.prototype.endContour = function() {
  * the shape (to connect the beginning and the end).
  *
  * @method endShape
- * @param  {Constant} mode use CLOSE to close the shape
+ * @param  {Number/Constant} mode use CLOSE to close the shape
  * @return {Object}               the p5 object
  * @example
  * <div>
@@ -15998,7 +14788,7 @@ p5.prototype.vertex = function(x, y, moveTo) {
 };
 
 module.exports = p5;
-},{"./constants":38,"./core":39}],52:[function(_dereq_,module,exports){
+},{"./constants":36,"./core":37}],50:[function(_dereq_,module,exports){
 /**
  * @module Events
  * @submodule Acceleration
@@ -16556,7 +15346,7 @@ p5.prototype._handleMotion = function() {
 
 module.exports = p5;
 
-},{"../core/core":39}],53:[function(_dereq_,module,exports){
+},{"../core/core":37}],51:[function(_dereq_,module,exports){
 /**
  * @module Events
  * @submodule Keyboard
@@ -16884,7 +15674,7 @@ p5.prototype.keyIsDown = function(code) {
 
 module.exports = p5;
 
-},{"../core/core":39}],54:[function(_dereq_,module,exports){
+},{"../core/core":37}],52:[function(_dereq_,module,exports){
 /**
  * @module Events
  * @submodule Mouse
@@ -16964,7 +15754,7 @@ p5.prototype.mouseY = 0;
  * function draw() {
  *   background(244, 248, 252);
  *   line(mouseX, mouseY, pmouseX, pmouseY);
- *   println(pmouseX + " -> " + mouseX);
+ *   print(pmouseX + " -> " + mouseX);
  * }
  *
  * </code>
@@ -16989,7 +15779,7 @@ p5.prototype.pmouseX = 0;
  *   if(mouseY == pmouseY && mouseX == pmouseX)
  *     rect(20,20,60,60);
  *
- *   println(pmouseY + " -> " + mouseY);
+ *   print(pmouseY + " -> " + mouseY);
  * }
  *
  * </code>
@@ -17162,7 +15952,7 @@ p5.prototype.pwinMouseY = 0;
 	*       triangle(23, 75, 50, 20, 78, 75);
 	*   }
 	*
-	*   println(mouseButton);
+	*   print(mouseButton);
 	* }
 	* </code>
  * </div>
@@ -17187,7 +15977,7 @@ p5.prototype.mouseButton = 0;
 	*   else
 	*     rect(25, 25, 50, 50);
 	*
-	*   println(mouseIsPressed);
+	*   print(mouseIsPressed);
 	* }
 	* </code>
 	* </div>
@@ -17554,7 +16344,7 @@ p5.prototype._onclick = function(e) {
  * }
  *
  * function mouseWheel(event) {
- *   println(event.delta);
+ *   print(event.delta);
  *   //move the square according to the vertical scroll amount
  *   pos += event.delta;
  *   //uncomment to block page scrolling
@@ -17576,7 +16366,7 @@ p5.prototype._onwheel = function(e) {
 
 module.exports = p5;
 
-},{"../core/constants":38,"../core/core":39}],55:[function(_dereq_,module,exports){
+},{"../core/constants":36,"../core/core":37}],53:[function(_dereq_,module,exports){
 /**
  * @module Events
  * @submodule Touch
@@ -17603,23 +16393,6 @@ p5.prototype._hasTouchInteracted = false;
  * touches[] array.
  *
  * @property touchX
- * @method touchX
- * @example
- * <div>
- * <code>
- * // Touch and move  the finger in horizontally  across the canvas
- * function setup() {
- *   createCanvas(100, 100);
- * }
- *
- * function draw() {
- *   background(51);
- *   stroke(255, 204, 0);
- *   strokeWeight(4);
- *   rect(touchX, 50, 10, 10);
- * }
- * </code>
- * </div>
  */
 p5.prototype.touchX = 0;
 
@@ -17630,23 +16403,6 @@ p5.prototype.touchX = 0;
  * touches[] array.
  *
  * @property touchY
- * @method touchY
- * @example
- * <div>
- * <code>
- * // Touch and move the finger vertically across the canvas
- * function setup() {
- *   createCanvas(100, 100);
- * }
- *
- * function draw() {
- *   background(51);
- *   stroke(255, 204, 0);
- *   strokeWeight(4);
- *   rect(50, touchY, 10, 10);
- * }
- * </code>
- * </div>
  */
 p5.prototype.touchY = 0;
 
@@ -17912,7 +16668,7 @@ p5.prototype._ontouchend = function(e) {
 
 module.exports = p5;
 
-},{"../core/core":39}],56:[function(_dereq_,module,exports){
+},{"../core/core":37}],54:[function(_dereq_,module,exports){
 /*global ImageData:false */
 
 /**
@@ -18515,7 +17271,7 @@ Filters.blur = function(canvas, radius){
 
 module.exports = Filters;
 
-},{}],57:[function(_dereq_,module,exports){
+},{}],55:[function(_dereq_,module,exports){
 /**
  * @module Image
  * @submodule Image
@@ -18760,7 +17516,7 @@ p5.prototype.saveCanvas = function() {
  *
  *  function mousePressed() {
  *    saveFrames("out", "png", 1, 25, function(data){
- *      println(data);
+ *      print(data);
  *    });
  *  }
  *  </code></div>
@@ -18836,7 +17592,7 @@ p5.prototype._makeFrame = function(filename, extension, _cnv) {
 
 module.exports = p5;
 
-},{"../core/core":39}],58:[function(_dereq_,module,exports){
+},{"../core/core":37}],56:[function(_dereq_,module,exports){
 /**
  * @module Image
  * @submodule Loading & Displaying
@@ -19214,7 +17970,7 @@ p5.prototype._getTintedImageCanvas = function(img) {
  * they are used to set the image's width and height.
  *
  * @method imageMode
- * @param {Constant} mode either CORNER, CORNERS, or CENTER
+ * @param {String} m The mode: either CORNER, CORNERS, or CENTER.
  * @example
  *
  * <div>
@@ -19267,7 +18023,7 @@ p5.prototype.imageMode = function(m) {
 
 module.exports = p5;
 
-},{"../core/canvas":37,"../core/constants":38,"../core/core":39,"../core/error_helpers":42,"./filters":56}],59:[function(_dereq_,module,exports){
+},{"../core/canvas":35,"../core/constants":36,"../core/core":37,"../core/error_helpers":40,"./filters":54}],57:[function(_dereq_,module,exports){
 /**
  * @module Image
  * @submodule Image
@@ -19915,7 +18671,7 @@ p5.Image.prototype.save = function(filename, extension) {
 };
 
 module.exports = p5.Image;
-},{"../core/core":39,"./filters":56}],60:[function(_dereq_,module,exports){
+},{"../core/core":37,"./filters":54}],58:[function(_dereq_,module,exports){
 /**
  * @module Image
  * @submodule Pixels
@@ -20157,7 +18913,7 @@ p5.prototype.copy = function () {
  * Increases the light areas. No parameter is used.
  *
  * @method filter
- * @param  {Constant} filterType
+ * @param  {String} filterType
  * @param  {Number} filterParam an optional parameter unique
  *  to each filter, see above
  *
@@ -20482,7 +19238,7 @@ p5.prototype.updatePixels = function (x, y, w, h) {
 
 module.exports = p5;
 
-},{"../color/p5.Color":33,"../core/core":39,"./filters":56}],61:[function(_dereq_,module,exports){
+},{"../color/p5.Color":31,"../core/core":37,"./filters":54}],59:[function(_dereq_,module,exports){
 /**
  * @module IO
  * @submodule Input
@@ -20895,10 +19651,8 @@ p5.prototype.loadStrings = function (path, callback, errorCallback) {
  * @param  {String}         filename   name of the file or URL to load
  * @param  {String|Strings} [options]  "header" "csv" "tsv"
  * @param  {Function}       [callback] function to be executed after
- *                                     loadTable() completes. On success, the
- *                                     Table object is passed in as the
- *                                     first argument; otherwise, false
- *                                     is passed in.
+ *                                     loadTable() completes, Table object is
+ *                                     passed in as first argument
  * @return {Object}                    Table object containing data
  *
  * @example
@@ -20925,16 +19679,16 @@ p5.prototype.loadStrings = function (path, callback, errorCallback) {
  *
  * function setup() {
  *   //count the columns
- *   println(table.getRowCount() + " total rows in table");
- *   println(table.getColumnCount() + " total columns in table");
+ *   print(table.getRowCount() + " total rows in table");
+ *   print(table.getColumnCount() + " total columns in table");
  *
- *   println(table.getColumn("name"));
+ *   print(table.getColumn("name"));
  *   //["Goat", "Leopard", "Zebra"]
  *
  *   //cycle through the table
  *   for (var r = 0; r < table.getRowCount(); r++)
  *     for (var c = 0; c < table.getColumnCount(); c++) {
- *       println(table.getString(r, c));
+ *       print(table.getString(r, c));
  *     }
  * }
  * </code>
@@ -21115,7 +19869,7 @@ p5.prototype.loadTable = function (path) {
     .fail(function (err, msg) {
       p5._friendlyFileLoadError(2, path);
       // don't get error callback mixed up with decrementPreload
-      if ((typeof callback === 'function') &&
+      if ((typeof callback !== 'undefined') &&
         (callback !== decrementPreload)) {
         callback(false);
       }
@@ -21946,7 +20700,7 @@ function destroyClickedElement(event) {
 
 module.exports = p5;
 
-},{"../core/core":39,"../core/error_helpers":42,"opentype.js":8,"reqwest":29}],62:[function(_dereq_,module,exports){
+},{"../core/core":37,"../core/error_helpers":40,"opentype.js":8,"reqwest":27}],60:[function(_dereq_,module,exports){
 /**
  * @module IO
  * @submodule Table
@@ -22047,7 +20801,7 @@ p5.Table = function (rows) {
 	*   //print the results
 	*   for (var r = 0; r < table.getRowCount(); r++)
 	*     for (var c = 0; c < table.getColumnCount(); c++)
-	*       println(table.getString(r, c));
+	*       print(table.getString(r, c));
 	* }
 	* </code>
 	* </div>
@@ -22097,7 +20851,7 @@ p5.Table.prototype.addRow = function(row) {
 	*   //print the results
 	*   for (var r = 0; r < table.getRowCount(); r++)
 	*     for (var c = 0; c < table.getColumnCount(); c++)
-	*       println(table.getString(r, c));
+	*       print(table.getString(r, c));
 	* }
 	* </code>
 	* </div>
@@ -22142,7 +20896,7 @@ p5.Table.prototype.removeRow = function(id) {
 	*   //print it column by column
 	*   //note: a row is an object, not an array
 	*   for (var c = 0; c < table.getColumnCount(); c++)
-	*     println(row.getString(c));
+	*     print(row.getString(c));
 	* }
 	* </code>
 	* </div>
@@ -22186,7 +20940,7 @@ p5.Table.prototype.getRow = function(r) {
 	*   //print the results
 	*   for (var r = 0; r < table.getRowCount(); r++)
 	*     for (var c = 0; c < table.getColumnCount(); c++)
-	*       println(table.getString(r, c));
+	*       print(table.getString(r, c));
 	* }
 	* </code>
 	* </div>
@@ -22231,7 +20985,7 @@ p5.Table.prototype.getRows = function() {
 	*   //find the animal named zebra
 	*   var row = table.findRow("Zebra", "name");
 	*   //find the corresponding species
-	*   println(row.getString("species"));
+	*   print(row.getString("species"));
 	* }
 	* </code>
 	* </div>
@@ -22298,7 +21052,7 @@ p5.Table.prototype.findRow = function(value, column) {
 	*
 	*   //find the rows containing animals named Goat
 	*   var rows = table.findRows("Goat", "name");
-	*   println(rows.length + " Goats found");
+	*   print(rows.length + " Goats found");
 	* }
 	* </code>
 	* </div>
@@ -22451,7 +21205,7 @@ p5.Table.prototype.matchRows = function(regexp, column) {
 	*
 	* function setup() {
 	*   //getColumn returns an array that can be printed directly
-	*   println(table.getColumn("species"));
+	*   print(table.getColumn("species"));
 	*   //outputs ["Capra hircus", "Panthera pardus", "Equus zebra"]
 	* }
 	* </code>
@@ -22498,8 +21252,8 @@ p5.Table.prototype.getColumn = function(value) {
 	*
 	* function setup() {
 	*   table.clearRows();
-	*   println(table.getRowCount() + " total rows in table");
-	*   println(table.getColumnCount() + " total columns in table");
+	*   print(table.getRowCount() + " total rows in table");
+	*   print(table.getColumnCount() + " total columns in table");
 	* }
 	* </code>
 	* </div>
@@ -22546,7 +21300,7 @@ p5.Table.prototype.clearRows = function() {
 	*   //print the results
 	*   for (var r = 0; r < table.getRowCount(); r++)
 	*     for (var c = 0; c < table.getColumnCount(); c++)
-	*       println(table.getString(r, c));
+	*       print(table.getString(r, c));
 	* }
 	* </code>
 	* </div>
@@ -22700,7 +21454,7 @@ p5.Table.prototype.trim = function(column) {
 	*
 	* function setup() {
 	*   table.removeColumn("id");
-	*   println(table.getColumnCount());
+	*   print(table.getColumnCount());
 	* }
 	* </code>
 	* </div>
@@ -22770,7 +21524,7 @@ p5.Table.prototype.removeColumn = function(c) {
 	*   //print the results
 	*   for (var r = 0; r < table.getRowCount(); r++)
 	*     for (var c = 0; c < table.getColumnCount(); c++)
-	*       println(table.getString(r, c));
+	*       print(table.getString(r, c));
 	* }
 	* </code>
 	* </div>
@@ -22812,7 +21566,7 @@ p5.Table.prototype.set = function(row, column, value) {
 	* function setup() {
 	*   table.setNum(1, "id", 1);
 	*
-	*   println(table.getColumn(0));
+	*   print(table.getColumn(0));
 	*   //["0", 1, "2"]
 	* }
 	* </code>
@@ -22869,9 +21623,9 @@ p5.Table.prototype.setString = function(row, column, value){
 	* }
 	*
 	* function setup() {
-	*   println(table.get(0, 1));
+	*   print(table.get(0, 1));
 	*   //Capra hircus
-	*   println(table.get(0, "species"));
+	*   print(table.get(0, "species"));
 	*   //Capra hircus
 	* }
 	* </code>
@@ -22912,7 +21666,7 @@ p5.Table.prototype.get = function(row, column) {
 	* }
 	*
 	* function setup() {
-	*   println(table.getNum(1, 0) + 100);
+	*   print(table.getNum(1, 0) + 100);
 	*   //id 1 + 100 = 101
 	* }
 	* </code>
@@ -22957,7 +21711,7 @@ p5.Table.prototype.getNum = function(row, column) {
 	*
 	*   //output each row as array
 	*   for (var i = 0; i < tableArray.length; i++)
-	*     println(tableArray[i]);
+	*     print(tableArray[i]);
 	* }
 	* </code>
 	* </div>
@@ -22998,7 +21752,7 @@ p5.Table.prototype.getString = function(row, column) {
 	* function setup() {
 	*   var tableObject = table.getObject();
 	*
-	*   println(tableObject);
+	*   print(tableObject);
 	*   //outputs an object
 	* }
 	* </code>
@@ -23043,7 +21797,7 @@ p5.Table.prototype.getArray = function () {
 
 module.exports = p5.Table;
 
-},{"../core/core":39}],63:[function(_dereq_,module,exports){
+},{"../core/core":37}],61:[function(_dereq_,module,exports){
 /**
  * @module IO
  * @submodule Table
@@ -23213,7 +21967,7 @@ p5.TableRow.prototype.getString = function(column) {
 
 module.exports = p5.TableRow;
 
-},{"../core/core":39}],64:[function(_dereq_,module,exports){
+},{"../core/core":37}],62:[function(_dereq_,module,exports){
 /**
  * @module IO
  * @submodule XML
@@ -23256,7 +22010,7 @@ var p5 = _dereq_('../core/core');
  *     var id = children[i].getNumber("id");
  *     var coloring = children[i].getString("species");
  *     var name = children[i].getContent();
- *     println(id + ", " + coloring + ", " + name);
+ *     print(id + ", " + coloring + ", " + name);
  *   }
  * }
  *
@@ -23302,7 +22056,7 @@ p5.XML = function () {
  * function setup() {
  *   var children = xml.getChildren("animal");
  *   var parent = children[1].getParent();
- *   println(parent.getName());
+ *   print(parent.getName());
  * }
  *
  * // Sketch prints:
@@ -23372,9 +22126,9 @@ p5.XML.prototype.getName = function() {
  * }
  *
  * function setup() {
- *   println(xml.getName());
+ *   print(xml.getName());
  *   xml.setName("fish");
- *   println(xml.getName());
+ *   print(xml.getName());
  * }
  *
  * // Sketch prints:
@@ -23411,7 +22165,7 @@ p5.XML.prototype.setName = function(name) {
  * }
  *
  * function setup() {
- *   println(xml.hasChildren());
+ *   print(xml.hasChildren());
  * }
  *
  * // Sketch prints:
@@ -23448,7 +22202,7 @@ p5.XML.prototype.hasChildren = function() {
  * }
  *
  * function setup() {
- *   println(xml.listChildren());
+ *   print(xml.listChildren());
  * }
  *
  * // Sketch prints:
@@ -23489,7 +22243,7 @@ p5.XML.prototype.listChildren = function() {
  *   var animals = xml.getChildren("animal");
  *
  *   for (var i = 0; i < animals.length; i++) {
- *     println(animals[i].getContent());
+ *     print(animals[i].getContent());
  *   }
  * }
  *
@@ -23536,7 +22290,7 @@ p5.XML.prototype.getChildren = function(param) {
  *
  * function setup() {
  *   var firstChild = xml.getChild("animal");
- *   println(firstChild.getContent());
+ *   print(firstChild.getContent());
  * }
  *
  * // Sketch prints:
@@ -23551,7 +22305,7 @@ p5.XML.prototype.getChildren = function(param) {
  *
  * function setup() {
  *   var secondChild = xml.getChild(1);
- *   println(secondChild.getContent());
+ *   print(secondChild.getContent());
  * }
  *
  * // Sketch prints:
@@ -23613,7 +22367,7 @@ p5.XML.prototype.addChild = function(node) {
  *   xml.removeChild("animal");
  *   var children = xml.getChildren();
  *   for (var i=0; i<children.length; i++) {
- *     println(children[i].getContent());
+ *     print(children[i].getContent());
  *   }
  * }
  *
@@ -23632,7 +22386,7 @@ p5.XML.prototype.addChild = function(node) {
  *   xml.removeChild(1);
  *   var children = xml.getChildren();
  *   for (var i=0; i<children.length; i++) {
- *     println(children[i].getContent());
+ *     print(children[i].getContent());
  *   }
  * }
  *
@@ -23684,7 +22438,7 @@ p5.XML.prototype.removeChild = function(param) {
  *
  * function setup() {
  *   var firstChild = xml.getChild("animal");
- *   println(firstChild.getAttributeCount());
+ *   print(firstChild.getAttributeCount());
  * }
  *
  * // Sketch prints:
@@ -23721,7 +22475,7 @@ p5.XML.prototype.getAttributeCount = function() {
  *
  * function setup() {
  *   var firstChild = xml.getChild("animal");
- *   println(firstChild.listAttributes());
+ *   print(firstChild.listAttributes());
  * }
  *
  * // Sketch prints:
@@ -23758,8 +22512,8 @@ p5.XML.prototype.listAttributes = function() {
  *
  * function setup() {
  *   var firstChild = xml.getChild("animal");
- *   println(firstChild.hasAttribute("species"));
- *   println(firstChild.hasAttribute("color"));
+ *   print(firstChild.hasAttribute("species"));
+ *   print(firstChild.hasAttribute("color"));
  * }
  *
  * // Sketch prints:
@@ -23801,7 +22555,7 @@ p5.XML.prototype.hasAttribute = function(name) {
  *
  * function setup() {
  *   var firstChild = xml.getChild("animal");
- *   println(firstChild.getNumber("id"));
+ *   print(firstChild.getNumber("id"));
  * }
  *
  * // Sketch prints:
@@ -23842,7 +22596,7 @@ p5.XML.prototype.getNumber = function(name, defaultValue) {
  *
  * function setup() {
  *   var firstChild = xml.getChild("animal");
- *   println(firstChild.getString("species"));
+ *   print(firstChild.getString("species"));
  * }
  *
  * // Sketch prints:
@@ -23880,9 +22634,9 @@ p5.XML.prototype.getString = function(name, defaultValue) {
  *
  * function setup() {
  *   var firstChild = xml.getChild("animal");
- *   println(firstChild.getString("species"));
+ *   print(firstChild.getString("species"));
  *   firstChild.setAttribute("species", "Jamides zebra");
- *   println(firstChild.getString("species"));
+ *   print(firstChild.getString("species"));
  * }
  *
  * // Sketch prints:
@@ -23923,7 +22677,7 @@ p5.XML.prototype.setAttribute = function(name, value) {
  *
  * function setup() {
  *   var firstChild = xml.getChild("animal");
- *   println(firstChild.getContent());
+ *   print(firstChild.getContent());
  * }
  *
  * // Sketch prints:
@@ -23959,9 +22713,9 @@ p5.XML.prototype.getContent = function(defaultValue) {
  *
  * function setup() {
  *   var firstChild = xml.getChild("animal");
- *   println(firstChild.getContent());
+ *   print(firstChild.getContent());
  *   firstChild.setContent("Mountain Goat");
- *   println(firstChild.getContent());
+ *   print(firstChild.getContent());
  * }
  *
  * // Sketch prints:
@@ -24008,7 +22762,7 @@ p5.XML.prototype._setAttributes = function(node) {
 };
 
 module.exports = p5.XML;
-},{"../core/core":39}],65:[function(_dereq_,module,exports){
+},{"../core/core":37}],63:[function(_dereq_,module,exports){
 /**
  * @module Math
  * @submodule Calculation
@@ -24033,8 +22787,8 @@ var p5 = _dereq_('../core/core');
  *   var x = -3;
  *   var y = abs(x);
  *
- *   println(x); // -3
- *   println(y); // 3
+ *   print(x); // -3
+ *   print(y); // 3
  * }
  * </code></div>
  */
@@ -24358,13 +23112,13 @@ p5.prototype.log = Math.log;
  *   var y2 = 70;
  *
  *   line(0, 0, x1, y1);
- *   println(mag(x1, y1));  // Prints "36.05551"
+ *   print(mag(x1, y1));  // Prints "36.05551"
  *   line(0, 0, x2, y1);
- *   println(mag(x2, y1));  // Prints "85.44004"
+ *   print(mag(x2, y1));  // Prints "85.44004"
  *   line(0, 0, x1, y2);
- *   println(mag(x1, y2));  // Prints "72.8011"
+ *   print(mag(x1, y2));  // Prints "72.8011"
  *   line(0, 0, x2, y2);
- *   println(mag(x2, y2));  // Prints "106.30146"
+ *   print(mag(x2, y2));  // Prints "106.30146"
  * }
  * </code></div>
  */
@@ -24687,7 +23441,7 @@ p5.prototype.sqrt = Math.sqrt;
 
 module.exports = p5;
 
-},{"../core/core":39}],66:[function(_dereq_,module,exports){
+},{"../core/core":37}],64:[function(_dereq_,module,exports){
 /**
  * @module Math
  * @submodule Math
@@ -24721,7 +23475,7 @@ p5.prototype.createVector = function (x, y, z) {
 
 module.exports = p5;
 
-},{"../core/core":39}],67:[function(_dereq_,module,exports){
+},{"../core/core":37}],65:[function(_dereq_,module,exports){
 //////////////////////////////////////////////////////////////
 
 // http://mrl.nyu.edu/~perlin/noise/
@@ -25010,7 +23764,7 @@ p5.prototype.noiseSeed = function(seed) {
 
 module.exports = p5;
 
-},{"../core/core":39}],68:[function(_dereq_,module,exports){
+},{"../core/core":37}],66:[function(_dereq_,module,exports){
 /**
  * @module Math
  * @submodule Math
@@ -25104,7 +23858,7 @@ p5.Vector = function() {
  * <div class = "norender"><code>
  * function setup() {
  *   var v = createVector(20,30);
- *   println(String(v)); // prints "p5.Vector Object : [20, 30, 0]"
+ *   print(String(v)); // prints "p5.Vector Object : [20, 30, 0]"
  * }
  * </div></code>
  *
@@ -25165,7 +23919,7 @@ p5.Vector.prototype.set = function (x, y, z) {
  * <code>
  * var v1 = createVector(1, 2, 3);
  * var v2 = v1.copy();
- * println(v1.x == v2.x && v1.y == v2.y && v1.z == v2.z);
+ * print(v1.x == v2.x && v1.y == v2.y && v1.z == v2.z);
  * // Prints "true"
  * </code>
  * </div>
@@ -25361,7 +24115,7 @@ p5.Vector.prototype.div = function (n) {
  * <code>
  * var v = createVector(20.0, 30.0, 40.0);
  * var m = v.mag();
- * println(m); // Prints "53.85164807134504"
+ * print(m); // Prints "53.85164807134504"
  * </code>
  * </div>
  */
@@ -25382,7 +24136,7 @@ p5.Vector.prototype.mag = function () {
  * <code>
  * // Static method
  * var v1 = createVector(6, 4, 2);
- * println(v1.magSq()); // Prints "56"
+ * print(v1.magSq()); // Prints "56"
  * </code>
  * </div>
  */
@@ -25409,7 +24163,7 @@ p5.Vector.prototype.magSq = function () {
  * var v1 = createVector(1, 2, 3);
  * var v2 = createVector(2, 3, 4);
  *
- * println(v1.dot(v2)); // Prints "20"
+ * print(v1.dot(v2)); // Prints "20"
  * </code>
  * </div>
  *
@@ -25521,7 +24275,7 @@ p5.Vector.prototype.dist = function (v) {
  *
  */
 p5.Vector.prototype.normalize = function () {
-  return this.mag() === 0 ? this : this.div(this.mag());
+  return this.div(this.mag());
 };
 
 /**
@@ -25542,11 +24296,11 @@ p5.Vector.prototype.normalize = function () {
  * </code>
  * </div>
  */
-p5.Vector.prototype.limit = function (max) {
+p5.Vector.prototype.limit = function (l) {
   var mSq = this.magSq();
-  if(mSq > max*max) {
+  if(mSq > l*l) {
     this.div(Math.sqrt(mSq)); //normalize it
-    this.mult(max);
+    this.mult(l);
   }
   return this;
 };
@@ -25581,13 +24335,13 @@ p5.Vector.prototype.setMag = function (n) {
  * <div class = "norender"><code>
  * function setup() {
  *   var v1 = createVector(30,50);
- *   println(v1.heading()); // 1.0303768265243125
+ *   print(v1.heading()); // 1.0303768265243125
  *
  *   var v1 = createVector(40,50);
- *   println(v1.heading()); // 0.8960553845713439
+ *   print(v1.heading()); // 0.8960553845713439
  *
  *   var v1 = createVector(30,70);
- *   println(v1.heading()); // 1.1659045405098132
+ *   print(v1.heading()); // 1.1659045405098132
  * }
  * </div></code>
  */
@@ -25686,16 +24440,16 @@ p5.Vector.prototype.lerp = function (x, y, z, amt) {
  * <div class = "norender"><code>
  * function setup() {
  *   var v = createVector(20,30);
- *   println(v.array()); // Prints : Array [20, 30, 0]
+ *   print(v.array()); // Prints : Array [20, 30, 0]
  * }
  * </div></code>
  * <div class="norender">
  * <code>
  * var v = createVector(10.0, 20.0, 30.0);
  * var f = v.array();
- * println(f[0]); // Prints "10.0"
- * println(f[1]); // Prints "20.0"
- * println(f[2]); // Prints "30.0"
+ * print(f[0]); // Prints "10.0"
+ * print(f[1]); // Prints "20.0"
+ * print(f[2]); // Prints "30.0"
  * </code>
  * </div>
  */
@@ -25718,8 +24472,8 @@ p5.Vector.prototype.array = function () {
  * v2 = createVector(5,10,20);
  * v3 = createVector(13,10,19);
  *
- * println(v1.equals(v2.x,v2.y,v2.z)); // true
- * println(v1.equals(v3.x,v3.y,v3.z)); // false
+ * print(v1.equals(v2.x,v2.y,v2.z)); // true
+ * print(v1.equals(v3.x,v3.y,v3.z)); // false
  * </div></code>
  * <div class="norender">
  * <code>
@@ -26061,7 +24815,7 @@ p5.Vector.mag = function (vecT){
 
 module.exports = p5.Vector;
 
-},{"../core/constants":38,"../core/core":39,"./polargeometry":69}],69:[function(_dereq_,module,exports){
+},{"../core/constants":36,"../core/core":37,"./polargeometry":67}],67:[function(_dereq_,module,exports){
 
 module.exports = {
 
@@ -26075,7 +24829,7 @@ module.exports = {
 
 };
 
-},{}],70:[function(_dereq_,module,exports){
+},{}],68:[function(_dereq_,module,exports){
 /**
  * @module Math
  * @submodule Random
@@ -26209,12 +24963,13 @@ p5.prototype.random = function (min, max) {
   } else {
     rand = Math.random();
   }
-  if (typeof min === 'undefined') {
+
+  if (arguments.length === 0) {
     return rand;
   } else
-  if (typeof max === 'undefined') {
-    if (min instanceof Array) {
-      return min[Math.floor(rand * min.length)];
+  if (arguments.length === 1) {
+    if (arguments[0] instanceof Array) {
+      return arguments[0][Math.floor(rand * arguments[0].length)];
     } else {
       return rand * min;
     }
@@ -26308,7 +25063,7 @@ p5.prototype.randomGaussian = function(mean, sd)  {
 
 module.exports = p5;
 
-},{"../core/core":39}],71:[function(_dereq_,module,exports){
+},{"../core/core":37}],69:[function(_dereq_,module,exports){
 /**
  * @module Math
  * @submodule Trigonometry
@@ -26581,7 +25336,7 @@ p5.prototype.tan = function(angle) {
  * var rad = PI/4;
  * var deg = degrees(rad);
  * println(rad + " radians is " + deg + " degrees");
- * // Prints: 0.7853981633974483 radians is 45 degrees
+ * // Prints: 45 degrees is 0.7853981633974483 radians
  * </code>
  * </div>
  *
@@ -26618,7 +25373,7 @@ p5.prototype.radians = function(angle) {
  * Sets the current mode of p5 to given mode. Default mode is RADIANS.
  *
  * @method angleMode
- * @param {Constant} mode either RADIANS or DEGREES
+ * @param {Number/Constant} mode either RADIANS or DEGREES
  *
  * @example
  * <div>
@@ -26648,7 +25403,7 @@ p5.prototype.angleMode = function(mode) {
 
 module.exports = p5;
 
-},{"../core/constants":38,"../core/core":39,"./polargeometry":69}],72:[function(_dereq_,module,exports){
+},{"../core/constants":36,"../core/core":37,"./polargeometry":67}],70:[function(_dereq_,module,exports){
 /**
  * @module Typography
  * @submodule Attributes
@@ -26677,9 +25432,9 @@ var p5 = _dereq_('../core/core');
  * to the y value.
  *
  * @method textAlign
- * @param {Constant} horizAlign horizontal alignment, either LEFT,
+ * @param {Number/Constant} horizAlign horizontal alignment, either LEFT,
  *                            CENTER, or RIGHT
- * @param {Constant} vertAlign vertical alignment, either TOP,
+ * @param {Number/Constant} vertAlign vertical alignment, either TOP,
  *                            BOTTOM, CENTER, or BASELINE
  * @return {Number}
  * @example
@@ -26870,7 +25625,7 @@ p5.prototype._updateTextMetrics = function() {
 
 module.exports = p5;
 
-},{"../core/core":39}],73:[function(_dereq_,module,exports){
+},{"../core/core":37}],71:[function(_dereq_,module,exports){
 /**
  * @module Typography
  * @submodule Loading & Displaying
@@ -27015,7 +25770,7 @@ p5.prototype.textFont = function(theFont, theSize) {
 
 module.exports = p5;
 
-},{"../core/constants":38,"../core/core":39,"../core/error_helpers":42}],74:[function(_dereq_,module,exports){
+},{"../core/constants":36,"../core/core":37,"../core/error_helpers":40}],72:[function(_dereq_,module,exports){
 /**
  * This module defines the p5.Font class and functions for
  * drawing text to the display canvas.
@@ -28082,7 +26837,7 @@ function cacheKey() {
 
 module.exports = p5.Font;
 
-},{"../core/constants":38,"../core/core":39}],75:[function(_dereq_,module,exports){
+},{"../core/constants":36,"../core/core":37}],73:[function(_dereq_,module,exports){
 /**
  * @module Data
  * @submodule Array Functions
@@ -28106,10 +26861,10 @@ var p5 = _dereq_('../core/core');
  * function setup() {
  *
  * var myArray = new Array("Mango", "Apple", "Papaya")
- * println(myArray) // ["Mango", "Apple", "Papaya"]
+ * print(myArray) // ["Mango", "Apple", "Papaya"]
  *
  * append(myArray, "Peach")
- * println(myArray) // ["Mango", "Apple", "Papaya", "Peach"]
+ * print(myArray) // ["Mango", "Apple", "Papaya", "Peach"]
  *
  * }
  * </div></code>
@@ -28151,11 +26906,11 @@ p5.prototype.append = function(array, value) {
  *    var dstPosition = 0;
  *    var length = 2;
  *
- *    println(src); // ["A", "B", "C"]
- *    println(dst); // [ 1 ,  2 ,  3 ]
+ *    print(src); // ["A", "B", "C"]
+ *    print(dst); // [ 1 ,  2 ,  3 ]
  *
  *    arrayCopy(src, srcPosition, dst, dstPosition, length);
- *    println(dst); // ["B", "C", 3]
+ *    print(dst); // ["B", "C", 3]
  *
  *    }
  *  </div></code>
@@ -28215,14 +26970,14 @@ p5.prototype.arrayCopy = function(
  *   var arr1 = new Array("A", "B", "C");
  *   var arr2 = new Array( 1 ,  2 ,  3 );
  *
- *   println(arr1); // ["A","B","C"]
- *   println(arr2); // [1,2,3]
+ *   print(arr1); // ["A","B","C"]
+ *   print(arr2); // [1,2,3]
  *
  *   var arr3 = concat(arr1, arr2);
  *
- *   println(arr1); // ["A","B","C"]
- *   println(arr2); // [1,2,3]
- *   println(arr3); // ["A","B","C",1,2,3]
+ *   print(arr1); // ["A","B","C"]
+ *   print(arr2); // [1,2,3]
+ *   print(arr3); // ["A","B","C",1,2,3]
  *
  * }
  * </div></code>
@@ -28240,10 +26995,10 @@ p5.prototype.concat = function(list0, list1) {
  * <div class="norender"><code>
  * function setup() {
  *   var myArray = new Array("A", "B", "C");
- *   println(myArray); // ["A","B","C"]
+ *   print(myArray); // ["A","B","C"]
  *
  *   reverse(myArray);
- *   println(myArray); // ["C","B","A"]
+ *   print(myArray); // ["C","B","A"]
  * }
  * </div></code>
  */
@@ -28262,11 +27017,11 @@ p5.prototype.reverse = function(list) {
  * <div class = "norender"><code>
  * function setup() {
  *   var myArray = new Array("A", "B", "C");
- *   println(myArray); // ["A","B","C"]
+ *   print(myArray); // ["A","B","C"]
  *
  *   var newArray = shorten(myArray);
- *   println(myArray); // ["A","B","C"]
- *   println(newArray); // ["A","B"]
+ *   print(myArray); // ["A","B","C"]
+ *   print(newArray); // ["A","B"]
  * }
  * </div></code>
  */
@@ -28288,14 +27043,14 @@ p5.prototype.shorten = function(list) {
  * <div><code>
  * function setup() {
  *   var regularArr = ['ABC', 'def', createVector(), TAU, Math.E];
- *   println(regularArr);
+ *   print(regularArr);
  *   shuffle(regularArr, true); // force modifications to passed array
- *   println(regularArr);
+ *   print(regularArr);
  *
  *   // By default shuffle() returns a shuffled cloned array:
  *   var newArr = shuffle(regularArr);
- *   println(regularArr);
- *   println(newArr);
+ *   print(regularArr);
+ *   print(newArr);
  * }
  * </code></div>
  */
@@ -28330,21 +27085,21 @@ p5.prototype.shuffle = function(arr, bool) {
  * <div class = "norender"><code>
  * function setup() {
  *   var words = new Array("banana", "apple", "pear","lime");
- *   println(words); // ["banana", "apple", "pear", "lime"]
+ *   print(words); // ["banana", "apple", "pear", "lime"]
  *   var count = 4; // length of array
  *
  *   words = sort(words, count);
- *   println(words); // ["apple", "banana", "lime", "pear"]
+ *   print(words); // ["apple", "banana", "lime", "pear"]
  * }
  * </div></code>
  * <div class = "norender"><code>
  * function setup() {
  *   var numbers = new Array(2,6,1,5,14,9,8,12);
- *   println(numbers); // [2,6,1,5,14,9,8,12]
+ *   print(numbers); // [2,6,1,5,14,9,8,12]
  *   var count = 5; // Less than the length of the array
  *
  *   numbers = sort(numbers, count);
- *   println(numbers); // [1,2,5,6,14,9,8,12]
+ *   print(numbers); // [1,2,5,6,14,9,8,12]
  * }
  * </div></code>
  */
@@ -28377,11 +27132,11 @@ p5.prototype.sort = function(list, count) {
  * function setup() {
  *   var myArray = new Array(0,1,2,3,4);
  *   var insArray = new Array("A","B","C");
- *   println(myArray); // [0,1,2,3,4]
- *   println(insArray); // ["A","B","C"]
+ *   print(myArray); // [0,1,2,3,4]
+ *   print(insArray); // ["A","B","C"]
  *
  *   splice(myArray, insArray, 3);
- *   println(myArray); // [0,1,2,"A","B","C",3,4]
+ *   print(myArray); // [0,1,2,"A","B","C",3,4]
  * }
  * </div></code>
  */
@@ -28411,12 +27166,12 @@ p5.prototype.splice = function(list, value, index) {
  * <div class = "norender"><code>
  * function setup() {
  *   var myArray = new Array(1,2,3,4,5);
- *   println(myArray); // [1,2,3,4,5]
+ *   print(myArray); // [1,2,3,4,5]
  *
  *   var sub1 = subset(myArray, 0, 3);
  *   var sub2 = subset(myArray, 2, 2);
- *   println(sub1); // [1,2,3]
- *   println(sub2); // [3,4]
+ *   print(sub1); // [1,2,3]
+ *   print(sub2); // [3,4]
  * }
  * </div></code>
  */
@@ -28430,7 +27185,7 @@ p5.prototype.subset = function(list, start, count) {
 
 module.exports = p5;
 
-},{"../core/core":39}],76:[function(_dereq_,module,exports){
+},{"../core/core":37}],74:[function(_dereq_,module,exports){
 /**
  * @module Data
  * @submodule Conversion
@@ -28472,12 +27227,12 @@ p5.prototype.float = function(str) {
  * @return {Number}                     integer representation of value
  * @example
  * <div class='norender'><code>
- * println(int("10")); // 10
- * println(int(10.31)); // 10
- * println(int(-10)); // -10
- * println(int(true)); // 1
- * println(int(false)); // 0
- * println(int([false, true, "10.3", 9.8])); // [0, 1, 10, 9]
+ * print(int("10")); // 10
+ * print(int(10.31)); // 10
+ * print(int(-10)); // -10
+ * print(int(true)); // 1
+ * print(int(false)); // 0
+ * print(int([false, true, "10.3", 9.8])); // [0, 1, 10, 9]
  * </code></div>
  */
 p5.prototype.int = function(n, radix) {
@@ -28503,12 +27258,12 @@ p5.prototype.int = function(n, radix) {
  * @return {String}                     string representation of value
  * @example
  * <div class='norender'><code>
- * println(str("10"));  // "10"
- * println(str(10.31)); // "10.31"
- * println(str(-10));   // "-10"
- * println(str(true));  // "true"
- * println(str(false)); // "false"
- * println(str([true, "10.3", 9.8])); // [ "true", "10.3", "9.8" ]
+ * print(str("10"));  // "10"
+ * print(str(10.31)); // "10.31"
+ * print(str(-10));   // "-10"
+ * print(str(true));  // "true"
+ * print(str(false)); // "false"
+ * print(str([true, "10.3", 9.8])); // [ "true", "10.3", "9.8" ]
  * </code></div>
  */
 p5.prototype.str = function(n) {
@@ -28532,11 +27287,11 @@ p5.prototype.str = function(n) {
  * @return {Boolean}                    boolean representation of value
  * @example
  * <div class='norender'><code>
- * println(boolean(0));               // false
- * println(boolean(1));               // true
- * println(boolean("true"));          // true
- * println(boolean("abcd"));          // false
- * println(boolean([0, 12, "true"])); // [false, true, false]
+ * print(boolean(0));               // false
+ * print(boolean(1));               // true
+ * print(boolean("true"));          // true
+ * print(boolean("abcd"));          // false
+ * print(boolean([0, 12, "true"])); // [false, true, false]
  * </code></div>
  */
 p5.prototype.boolean = function(n) {
@@ -28563,12 +27318,12 @@ p5.prototype.boolean = function(n) {
  * @return {Number}                     byte representation of value
  * @example
  * <div class='norender'><code>
- * println(byte(127));               // 127
- * println(byte(128));               // -128
- * println(byte(23.4));              // 23
- * println(byte("23.4"));            // 23
- * println(byte(true));              // 1
- * println(byte([0, 255, "100"]));   // [0, -1, 100]
+ * print(byte(127));               // 127
+ * print(byte(128));               // -128
+ * print(byte(23.4));              // 23
+ * print(byte("23.4"));            // 23
+ * print(byte(true));              // 1
+ * print(byte([0, 255, "100"]));   // [0, -1, 100]
  * </code></div>
  */
 p5.prototype.byte = function(n) {
@@ -28592,10 +27347,10 @@ p5.prototype.byte = function(n) {
  * @return {String}             string representation of value
  * @example
  * <div class='norender'><code>
- * println(char(65));                     // "A"
- * println(char("65"));                   // "A"
- * println(char([65, 66, 67]));           // [ "A", "B", "C" ]
- * println(join(char([65, 66, 67]), '')); // "ABC"
+ * print(char(65));                     // "A"
+ * print(char("65"));                   // "A"
+ * print(char([65, 66, 67]));           // [ "A", "B", "C" ]
+ * print(join(char([65, 66, 67]), '')); // "ABC"
  * </code></div>
  */
 p5.prototype.char = function(n) {
@@ -28618,9 +27373,9 @@ p5.prototype.char = function(n) {
  * @return {Number}      integer representation of value
  * @example
  * <div class='norender'><code>
- * println(unchar("A"));               // 65
- * println(unchar(["A", "B", "C"]));   // [ 65, 66, 67 ]
- * println(unchar(split("ABC", "")));  // [ 65, 66, 67 ]
+ * print(unchar("A"));               // 65
+ * print(unchar(["A", "B", "C"]));   // [ 65, 66, 67 ]
+ * print(unchar(split("ABC", "")));  // [ 65, 66, 67 ]
  * </code></div>
  */
 p5.prototype.unchar = function(n) {
@@ -28642,9 +27397,9 @@ p5.prototype.unchar = function(n) {
  * @return {String}      hexadecimal string representation of value
  * @example
  * <div class='norender'><code>
- * println(hex(255));               // "000000FF"
- * println(hex(255, 6));            // "0000FF"
- * println(hex([0, 127, 255], 6));  // [ "000000", "00007F", "0000FF" ]
+ * print(hex(255));               // "000000FF"
+ * print(hex(255, 6));            // "0000FF"
+ * print(hex([0, 127, 255], 6));  // [ "000000", "00007F", "0000FF" ]
  * </code></div>
  */
 p5.prototype.hex = function(n, digits) {
@@ -28676,9 +27431,9 @@ p5.prototype.hex = function(n, digits) {
  * @return {Number}      integer representation of hexadecimal value
  * @example
  * <div class='norender'><code>
- * println(unhex("A"));                // 10
- * println(unhex("FF"));               // 255
- * println(unhex(["FF", "AA", "00"])); // [ 255, 170, 0 ]
+ * print(unhex("A"));                // 10
+ * print(unhex("FF"));               // 255
+ * print(unhex(["FF", "AA", "00"])); // [ 255, 170, 0 ]
  * </code></div>
  */
 p5.prototype.unhex = function(n) {
@@ -28691,7 +27446,7 @@ p5.prototype.unhex = function(n) {
 
 module.exports = p5;
 
-},{"../core/core":39}],77:[function(_dereq_,module,exports){
+},{"../core/core":37}],75:[function(_dereq_,module,exports){
 /**
  * @module Data
  * @submodule String Functions
@@ -29137,7 +27892,7 @@ p5.prototype.split = function(str, delim) {
  *   var myStr = "Mango, Banana, Lime";
  *   var myStrArr = splitTokens(myStr, ",");
  *
- *   println(myStrArr); // prints : ["Mango"," Banana"," Lime"]
+ *   print(myStrArr); // prints : ["Mango"," Banana"," Lime"]
  * }
  * </code>
  * </div>
@@ -29194,7 +27949,7 @@ p5.prototype.trim = function(str) {
 
 module.exports = p5;
 
-},{"../core/core":39}],78:[function(_dereq_,module,exports){
+},{"../core/core":37}],76:[function(_dereq_,module,exports){
 /**
  * @module IO
  * @submodule Time & Date
@@ -29335,7 +28090,7 @@ p5.prototype.year = function() {
 
 module.exports = p5;
 
-},{"../core/core":39}],79:[function(_dereq_,module,exports){
+},{"../core/core":37}],77:[function(_dereq_,module,exports){
 /**
  * @module Lights, Camera
  * @submodule Camera
@@ -29427,7 +28182,7 @@ p5.prototype.perspective = function(fovy,aspect,near,far) {
   );
   this._renderer.uPMatrix = p5.Matrix.identity();
   this._renderer.uPMatrix.perspective(fovy,aspect,near,far);
-  this._renderer._curCamera = 'custom';
+  this._renderer._isSetCamera = true;
 };
 
 /**
@@ -29480,12 +28235,12 @@ p5.prototype.ortho = function(left,right,bottom,top,near,far) {
   bottom /= this.height;
   this._renderer.uPMatrix = p5.Matrix.identity();
   this._renderer.uPMatrix.ortho(left,right,bottom,top,near,far);
-  this._renderer._curCamera = 'custom';
+  this._renderer._isSetCamera = true;
 };
 
 module.exports = p5;
 
-},{"../core/core":39}],80:[function(_dereq_,module,exports){
+},{"../core/core":37}],78:[function(_dereq_,module,exports){
 'use strict';
 
 var p5 = _dereq_('../core/core');
@@ -29501,7 +28256,7 @@ p5.prototype.orbitControl = function(){
 };
 
 module.exports = p5;
-},{"../core/core":39}],81:[function(_dereq_,module,exports){
+},{"../core/core":37}],79:[function(_dereq_,module,exports){
 /**
  * @module Lights, Camera
  * @submodule Lights
@@ -29826,7 +28581,7 @@ p5.prototype.pointLight = function(v1, v2, v3, a, x, y, z) {
 
 module.exports = p5;
 
-},{"../core/core":39}],82:[function(_dereq_,module,exports){
+},{"../core/core":37}],80:[function(_dereq_,module,exports){
 /**
  * @module Shape
  * @submodule 3D Models
@@ -30051,7 +28806,7 @@ p5.prototype.model = function ( model ) {
 
 module.exports = p5;
 
-},{"../core/core":39,"./p5.Geometry":84}],83:[function(_dereq_,module,exports){
+},{"../core/core":37,"./p5.Geometry":82}],81:[function(_dereq_,module,exports){
 /**
  * @module Lights, Camera
  * @submodule Material
@@ -30065,9 +28820,7 @@ var p5 = _dereq_('../core/core');
 //require('./p5.Texture');
 
 /**
- * Normal material for geometry. You can view all
- * possible materials in this
- * <a href="https://p5js.org/examples/examples/3D_Materials.php">example</a>.
+ * Normal material for geometry
  * @method normalMaterial
  * @return {p5}                the p5 object
  * @example
@@ -30091,8 +28844,7 @@ p5.prototype.normalMaterial = function(){
 };
 
 /**
- * Texture for geometry.  You can view other possible materials in this
- * <a href="https://p5js.org/examples/examples/3D_Materials.php">example</a>.
+ * Texture for geometry
  * @method texture
  * @param {p5.Image | p5.MediaElement | p5.Graphics} tex 2-dimensional graphics
  *                    to render as texture
@@ -30123,14 +28875,13 @@ p5.prototype.normalMaterial = function(){
  * var pg;
  * function setup(){
  *   createCanvas(100, 100, WEBGL);
- *   pg = createGraphics(200, 200);
- *   pg.textSize(100);
+ *   pg = createGraphics(256,256);
  * }
  *
  * function draw(){
  *   background(0);
  *   pg.background(255);
- *   pg.text('hello!', 0, 100);
+ *   pg.text('hello world!');
  *   //pass image as texture
  *   texture(pg);
  *   plane(200);
@@ -30257,9 +29008,7 @@ p5.RendererGL.prototype._bind = function(tex, data){
 //   return value + 1;
 
 /**
- * Ambient material for geometry with a given color. You can view all
- * possible materials in this
- * <a href="https://p5js.org/examples/examples/3D_Materials.php">example</a>.
+ * Ambient material for geometry with a given color
  * @method  ambientMaterial
  * @param  {Number|Array|String|p5.Color} v1  gray value,
  * red or hue value (depending on the current color mode),
@@ -30307,9 +29056,7 @@ p5.prototype.ambientMaterial = function(v1, v2, v3, a) {
 };
 
 /**
- * Specular material for geometry with a given color. You can view all
- * possible materials in this
- * <a href="https://p5js.org/examples/examples/3D_Materials.php">example</a>.
+ * Specular material for geometry with a given color
  * @method specularMaterial
  * @param  {Number|Array|String|p5.Color} v1  gray value,
  * red or hue value (depending on the current color mode),
@@ -30381,7 +29128,7 @@ p5.RendererGL.prototype._applyColorBlend = function(v1,v2,v3,a){
 
 module.exports = p5;
 
-},{"../core/core":39}],84:[function(_dereq_,module,exports){
+},{"../core/core":37}],82:[function(_dereq_,module,exports){
 //some of the functions are adjusted from Three.js(http://threejs.org)
 
 'use strict';
@@ -30561,7 +29308,7 @@ p5.Geometry.prototype.normalize = function() {
 
 module.exports = p5.Geometry;
 
-},{"../core/core":39}],85:[function(_dereq_,module,exports){
+},{"../core/core":37}],83:[function(_dereq_,module,exports){
 /**
 * @requires constants
 * @todo see methods below needing further implementation.
@@ -31272,7 +30019,7 @@ p5.Matrix.prototype.ortho = function(left,right,bottom,top,near,far){
 
 module.exports = p5.Matrix;
 
-},{"../core/constants":38,"../core/core":39,"../math/polargeometry":69}],86:[function(_dereq_,module,exports){
+},{"../core/constants":36,"../core/core":37,"../math/polargeometry":67}],84:[function(_dereq_,module,exports){
 /**
  * Welcome to RendererGL Immediate Mode.
  * Immediate mode is used for drawing custom shapes
@@ -31456,7 +30203,7 @@ p5.RendererGL.prototype._getColorVertexShader = function(){
 };
 
 module.exports = p5.RendererGL;
-},{"../core/constants":38,"../core/core":39}],87:[function(_dereq_,module,exports){
+},{"../core/constants":36,"../core/core":37}],85:[function(_dereq_,module,exports){
 //Retained Mode. The default mode for rendering 3D primitives
 //in WEBGL.
 'use strict';
@@ -31615,7 +30362,7 @@ function vToNArray(arr){
 }
 module.exports = p5.RendererGL;
 
-},{"../core/core":39}],88:[function(_dereq_,module,exports){
+},{"../core/core":37}],86:[function(_dereq_,module,exports){
 'use strict';
 
 var p5 = _dereq_('../core/core');
@@ -31656,7 +30403,7 @@ p5.RendererGL = function(elt, pInst, isMainCanvas) {
   this.directionalLightCount = 0;
   this.pointLightCount = 0;
   //camera
-  this._curCamera = null;
+  this._isSetCamera = false;
 
   /**
    * model view, projection, & normal
@@ -31704,18 +30451,18 @@ p5.RendererGL.prototype._initContext = function() {
 //detect if user didn't set the camera
 //then call this function below
 p5.RendererGL.prototype._setDefaultCamera = function(){
-  if(this._curCamera === null){
+  if(!this._isSetCamera){
     var _w = this.width;
     var _h = this.height;
     this.uPMatrix = p5.Matrix.identity();
     this.uPMatrix.perspective(60 / 180 * Math.PI, _w / _h, 0.1, 100);
-    this._curCamera = 'default';
+    this._isSetCamera = true;
   }
 };
 
 p5.RendererGL.prototype._update = function() {
   this.uMVMatrix = p5.Matrix.identity();
-  this.translate(0, 0, -(this.height / 2) / Math.tan(Math.PI * 30 / 180));
+  this.translate(0, 0, -800);
   this.ambientLightCount = 0;
   this.directionalLightCount = 0;
   this.pointLightCount = 0;
@@ -31927,7 +30674,7 @@ p5.RendererGL.prototype.fill = function(v1, v2, v3, a) {
   var gl = this.GL;
   var shaderProgram;
   //see material.js for more info on color blending in webgl
-  var colors = this._applyColorBlend.apply(this, arguments);
+  var colors = this._renderer._applyColorBlend.apply(this._renderer, arguments);
   this.curFillColor = colors;
   this.drawMode = 'fill';
   if(this.isImmediateDrawing){
@@ -32001,11 +30748,6 @@ p5.RendererGL.prototype.resize = function(w,h) {
   var gl = this.GL;
   p5.Renderer.prototype.resize.call(this, w, h);
   gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
-  // If we're using the default camera, update the aspect ratio
-  if(this._curCamera === 'default') {
-    this._curCamera = null;
-    this._setDefaultCamera();
-  }
 };
 
 /**
@@ -32107,7 +30849,7 @@ p5.RendererGL.prototype._applyTextProperties = function() {
 };
 module.exports = p5.RendererGL;
 
-},{"../core/core":39,"../core/p5.Renderer":45,"./p5.Matrix":85,"./shader":90}],89:[function(_dereq_,module,exports){
+},{"../core/core":37,"../core/p5.Renderer":43,"./p5.Matrix":83,"./shader":88}],87:[function(_dereq_,module,exports){
 /**
  * @module Shape
  * @submodule 3D Primitives
@@ -32198,7 +30940,7 @@ p5.prototype.plane = function(){
  * @example
  * <div>
  * <code>
- * //draw a spinning box with width, height and depth 200
+ * //draw a spining box with width, height and depth 200
  * function setup(){
  *   createCanvas(100, 100, WEBGL);
  * }
@@ -32430,7 +31172,7 @@ var _truncatedCone = function(
  * @example
  * <div>
  * <code>
- * //draw a spinning cylinder with radius 200 and height 200
+ * //draw a spining sylinder with radius 200 and height 200
  * function setup(){
  *   createCanvas(100, 100, WEBGL);
  * }
@@ -32489,7 +31231,7 @@ p5.prototype.cylinder = function(){
  * @example
  * <div>
  * <code>
- * //draw a spinning cone with radius 200 and height 200
+ * //draw a spining cone with radius 200 and height 200
  * function setup(){
  *   createCanvas(100, 100, WEBGL);
  * }
@@ -32623,7 +31365,7 @@ p5.prototype.ellipsoid = function(){
  * @example
  * <div>
  * <code>
- * //draw a spinning torus with radius 200 and tube radius 60
+ * //draw a spining torus with radius 200 and tube radius 60
  * function setup(){
  *   createCanvas(100, 100, WEBGL);
  * }
@@ -32693,18 +31435,18 @@ p5.RendererGL.prototype.point = function(x, y, z){
 
 p5.RendererGL.prototype.triangle = function
 (args){
-  var x1=args[0], y1=args[1];
-  var x2=args[2], y2=args[3];
-  var x3=args[4], y3=args[5];
-  var gId = 'tri|'+x1+'|'+y1+'|'+
-  x2+'|'+y2+'|'+
-  x3+'|'+y3;
+  var x1=args[0], y1=args[1], z1=args[2];
+  var x2=args[3], y2=args[4], z2=args[5];
+  var x3=args[6], y3=args[7], z3=args[8];
+  var gId = 'tri|'+x1+'|'+y1+'|'+z1+'|'+
+  x2+'|'+y2+'|'+z2+
+  x3+'|'+y3+'|'+z3;
   if(!this.geometryInHash(gId)){
     var _triangle = function(){
       var vertices = [];
-      vertices.push(new p5.Vector(x1,y1,0));
-      vertices.push(new p5.Vector(x2,y2,0));
-      vertices.push(new p5.Vector(x3,y3,0));
+      vertices.push(new p5.Vector(x1,y1,z1));
+      vertices.push(new p5.Vector(x2,y2,z2));
+      vertices.push(new p5.Vector(x3,y3,z3));
       this.vertices = vertices;
       this.faces = [[0,1,2]];
       this.uvs = [[0,0],[0,1],[1,1]];
@@ -32722,31 +31464,31 @@ p5.RendererGL.prototype.ellipse = function
 (args){
   var x = args[0];
   var y = args[1];
-  var width = args[2];
-  var height = args[3];
+  var z = args[2];
+  var width = args[3];
+  var height = args[4];
   //detailX and Y are optional 6th & 7th
   //arguments
-  var detailX = args[4] || 24;
-  var detailY = args[5] || 16;
+  var detailX = args[5] || 24;
+  var detailY = args[6] || 16;
   var gId = 'ellipse|'+args[0]+'|'+args[1]+'|'+args[2]+'|'+
-  args[3];
+  args[3]+'|'+args[4];
   if(!this.geometryInHash(gId)){
     var _ellipse = function(){
       var u,v,p;
-      var centerX = x+width*0.5;
-      var centerY = y+height*0.5;
       for (var i = 0; i <= this.detailY; i++){
         v = i / this.detailY;
         for (var j = 0; j <= this.detailX; j++){
           u = j / this.detailX;
           var theta = 2 * Math.PI * u;
           if(v === 0){
-            p = new p5.Vector(centerX, centerY, 0);
+            p = new p5.Vector(x, y, z);
           }
           else{
-            var _x = centerX + width*0.5 * Math.cos(theta);
-            var _y = centerY + height*0.5 * Math.sin(theta);
-            p = new p5.Vector(_x, _y, 0);
+            var _x = x + width * Math.sin(theta);
+            var _y = y + height * Math.cos(theta);
+            var _z = z;
+            p = new p5.Vector(_x, _y, _z);
           }
           this.vertices.push(p);
           this.uvs.push([u,v]);
@@ -32766,13 +31508,14 @@ p5.RendererGL.prototype.ellipse = function
 p5.RendererGL.prototype.rect = function
 (args){
   var gId = 'rect|'+args[0]+'|'+args[1]+'|'+args[2]+'|'+
-  args[3];
+  args[3]+'|'+args[4];
   var x = args[0];
   var y = args[1];
-  var width = args[2];
-  var height = args[3];
-  var detailX = args[4] || 24;
-  var detailY = args[5] || 16;
+  var z = args[2];
+  var width = args[3];
+  var height = args[4];
+  var detailX = args[5] || 24;
+  var detailY = args[6] || 16;
   if(!this.geometryInHash(gId)){
     var _rect = function(){
       var u,v,p;
@@ -32780,12 +31523,10 @@ p5.RendererGL.prototype.rect = function
         v = i / this.detailY;
         for (var j = 0; j <= this.detailX; j++){
           u = j / this.detailX;
-          // var _x = x-width/2;
-          // var _y = y-height/2;
           p = new p5.Vector(
-            x + (width*u),
-            y + (height*v),
-            0
+            (x + width) * u,
+            (y + height) * v,
+            z
           );
           this.vertices.push(p);
           this.uvs.push([u,v]);
@@ -32811,22 +31552,26 @@ p5.RendererGL.prototype.quad = function(){
   //
   var x1 = args[0],
     y1 = args[1],
-    x2 = args[2],
-    y2 = args[3],
-    x3 = args[4],
-    y3 = args[5],
-    x4 = args[6],
-    y4 = args[7];
-  var gId = 'quad|'+x1+'|'+y1+'|'+
-  x2+'|'+y2+'|'+
-  x3+'|'+y3+'|'+
-  x4+'|'+y4;
+    z1 = args[2],
+    x2 = args[3],
+    y2 = args[4],
+    z2 = args[5],
+    x3 = args[6],
+    y3 = args[7],
+    z3 = args[8],
+    x4 = args[9],
+    y4 = args[10],
+    z4 = args[11];
+  var gId = 'quad|'+x1+'|'+y1+'|'+z1+'|'+
+  x2+'|'+y2+'|'+z2+
+  x3+'|'+y3+'|'+z3+
+  x4+'|'+y4+'|'+z4;
   if(!this.geometryInHash(gId)){
     var _quad = function(){
-      this.vertices.push(new p5.Vector(x1,y1,0));
-      this.vertices.push(new p5.Vector(x2,y2,0));
-      this.vertices.push(new p5.Vector(x3,y3,0));
-      this.vertices.push(new p5.Vector(x4,y4,0));
+      this.vertices.push(new p5.Vector(x1,y1,z1));
+      this.vertices.push(new p5.Vector(x2,y2,z2));
+      this.vertices.push(new p5.Vector(x3,y3,z3));
+      this.vertices.push(new p5.Vector(x4,y4,z4));
       this.uvs.push([0, 0], [1, 0], [1, 1], [0, 1]);
     };
     var quadGeom = new p5.Geometry(2,2,_quad);
@@ -32894,7 +31639,7 @@ p5.RendererGL.prototype.curve=function
 
 module.exports = p5;
 
-},{"../core/core":39,"./p5.Geometry":84}],90:[function(_dereq_,module,exports){
+},{"../core/core":37,"./p5.Geometry":82}],88:[function(_dereq_,module,exports){
 
 
 module.exports = {
@@ -32905,7 +31650,7 @@ module.exports = {
   vertexColorFrag:
     "precision mediump float;\nvarying vec4 vColor;\nvoid main(void) {\n  gl_FragColor = vColor;\n}",
   normalVert:
-    "attribute vec3 aPosition;\nattribute vec3 aNormal;\nattribute vec2 aTexCoord;\n\nuniform mat4 uModelViewMatrix;\nuniform mat4 uProjectionMatrix;\nuniform mat3 uNormalMatrix;\nuniform float uResolution;\n\nvarying vec3 vVertexNormal;\nvarying highp vec2 vVertTexCoord;\n\nvoid main(void) {\n  vec4 positionVec4 = vec4(aPosition / uResolution * vec3(1.0, -1.0, 1.0), 1.0);\n  gl_Position = uProjectionMatrix * uModelViewMatrix * positionVec4;\n  vVertexNormal = vec3( uNormalMatrix * aNormal );\n  vVertTexCoord = aTexCoord;\n}\n",
+    "attribute vec3 aPosition;\nattribute vec3 aNormal;\nattribute vec2 aTexCoord;\n\nuniform mat4 uModelViewMatrix;\nuniform mat4 uProjectionMatrix;\nuniform mat3 uNormalMatrix;\nuniform float uResolution;\n\nvarying vec3 vVertexNormal;\nvarying highp vec2 vVertTexCoord;\n\nvoid main(void) {\n  vec4 positionVec4 = vec4(aPosition / uResolution, 1.0);\n  gl_Position = uProjectionMatrix * uModelViewMatrix * positionVec4;\n  vVertexNormal = vec3( uNormalMatrix * aNormal );\n  vVertTexCoord = aTexCoord;\n}\n",
   normalFrag:
     "precision mediump float;\nvarying vec3 vVertexNormal;\nvoid main(void) {\n  gl_FragColor = vec4(vVertexNormal, 1.0);\n}",
   basicFrag:
@@ -32915,5 +31660,5 @@ module.exports = {
   lightTextureFrag:
     "precision mediump float;\n\nuniform vec4 uMaterialColor;\nuniform sampler2D uSampler;\nuniform bool isTexture;\n\nvarying vec3 vLightWeighting;\nvarying highp vec2 vVertTexCoord;\n\nvoid main(void) {\n  if(!isTexture){\n    gl_FragColor = vec4(vec3(uMaterialColor.rgb * vLightWeighting), uMaterialColor.a);\n  }else{\n    vec4 textureColor = texture2D(uSampler, vVertTexCoord);\n    if(vLightWeighting == vec3(0., 0., 0.)){\n      gl_FragColor = textureColor;\n    }else{\n      gl_FragColor = vec4(vec3(textureColor.rgb * vLightWeighting), textureColor.a); \n    }\n  }\n}"
 };
-},{}]},{},[30])(30)
+},{}]},{},[28])(28)
 });
